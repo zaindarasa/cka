@@ -17,7 +17,10 @@ def lesson(tid, p):
 
 side = ["* [Home](README.md)", "* [Roadmap: all 76 topics](ROADMAP.md)", "* [Conventions](00-conventions.md)", "* [Progress](PROGRESS.md)",
         "* [Verification backlog](VERIFY-LIST.md)", "* Extras", "  * [Exam intel and strategy (CKAD)](extras/exam-intel.md)",
-        "  * [15-day CKAD study plan](extras/study-plan.md)", "  * [CKAD practice questions](extras/practice-questions.md)"]
+        "  * [15-day CKAD study plan](extras/study-plan.md)", "  * [CKAD practice questions](extras/practice-questions.md)",
+        "  * [Exam intel and strategy (CKA)](extras/cka-exam-intel.md)",
+        "  * [7-week CKA study plan](extras/cka-study-plan.md)", "  * [CKA timed task bank](extras/cka-task-bank.md)",
+        "  * [CKA mock exams](extras/cka-mock-exams.md)"]
 road = ["# Roadmap", "", "All 76 topics in learning order. Written lessons are links; the rest are planned.", "",
         "**Status key:** `ready` = passed its first review clean. `written (1 review + 1 fix)` = reviewed once and fixed once, not re-checked. `written` = drafted, review pending. `not written yet` = planned.", ""]
 for part in "1234":

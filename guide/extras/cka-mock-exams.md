@@ -6,7 +6,7 @@
 
 ## How to run a mock
 
-- **Timer:** set 120 minutes, hard stop. Suggested minutes per task sum to ~105-110, leaving buffer for context switches and verification — the same margin the real exam needs (reported shape: ~17 tasks, ~66% to pass, see [exam intel](exam-intel.md)).
+- **Timer:** set 120 minutes, hard stop. Suggested minutes per task sum to ~105-110, leaving buffer for context switches and verification — the same margin the real exam needs (reported shape: ~17 tasks, ~66% to pass, see [exam intel](cka-exam-intel.md)).
 - **Contexts:** the real exam puts each task on its own SSH session and cluster context. These mocks simulate that with two environments — every task header names one. **Type the context line every time you start a task, even if you never switched:**
   - `kind` tasks: `kubectl config use-context kind-lab` (context `kind-lab`, cluster `lab`, nodes `lab-control-plane`, `lab-worker`, `lab-worker2`, Calico — from `env/kind-up.sh`, see [conventions](../00-conventions.md)).
   - `vms` tasks: the kubeadm cluster — `ssh cp1`, `sudo -i`, `export KUBECONFIG=/etc/kubernetes/admin.conf`. Node work happens on `w1`/`w2` via `ssh` + `sudo -i`; `exit` between nodes, no nested `ssh`.
@@ -55,7 +55,7 @@ On the kubeadm cluster, every newly created Pod stays `Pending` with no events �
 
 > `kubectl config use-context kind-lab`
 
-Helm release `site` in namespace `e1-helm` was installed from the chart at `/opt/course/04/site-chart`, but its application never came up. Find what the release got wrong and fix it with `helm upgrade` — do not edit the Deployment or Service directly. Make `http://site.e1-helm.svc.cluster.local` answer, and write the release's current revision into `/opt/course/04/revision.txt`.
+Helm release `site` in namespace `e1-helm` was installed from the chart at `/opt/course/04/site-chart`, but its application never came up. Find what the release got wrong and fix it with `helm upgrade` so the application runs `nginx:1.27` — do not edit the Deployment or Service directly. Make `http://site.e1-helm.svc.cluster.local` answer, and write the release's current revision into `/opt/course/04/revision.txt`.
 
 ### Task 5 — 6 min · 6 pts · Cluster Architecture · `kind`
 
@@ -457,7 +457,7 @@ systemctl is-enabled kubelet | grep -q '^enabled$' && echo "kubelet enabled"
 ```bash
 test "$(ls /etc/kubernetes/manifests | wc -l)" -eq 4 && echo "four manifests"
 k -n kube-system get pod -l component=kube-scheduler -o jsonpath='{.items[0].status.phase}' | grep -q Running && echo "scheduler running"
-k -n default run s-test --image=busybox:1.36 --restart=Never -- sleep 5
+k -n default run s-test --image=busybox:1.36 --restart=Never -- sleep 120
 k -n default wait --for=condition=Ready pod/s-test --timeout=90s && echo "new pod scheduled" ; k -n default delete pod s-test --now --wait=false
 ```
 
@@ -618,8 +618,9 @@ k -n e1-edge run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c
 ```bash
 EXP=$(kubeadm certs check-expiration 2>/dev/null | awk '$1=="apiserver"{for(i=2;i<=NF;i++) if($i ~ /^[0-9]+d$/) print $i}')
 echo "expected: $EXP"
-grep -oE '[0-9]+' /opt/course/14/days.txt | head -1
-# PASS if the file's number equals the RESIDUAL TIME of the apiserver row (e.g. 364 for "364d")
+GOT=$(grep -oE '[0-9]+' /opt/course/14/days.txt | head -1)
+test -n "$GOT" && test "$GOT" -ge $((${EXP%d}-1)) && test "$GOT" -le $((${EXP%d}+1)) && echo "days match ($GOT ~ $EXP)"
+# prints "days match" only when the file's number is within a day of the apiserver row's residual time (e.g. 364 vs 364d)
 ```
 
 **Pass:** the number in the file matches the `apiserver` row's residual time (±1 day to forgive timing). **Partial credit:** no.
@@ -783,7 +784,7 @@ Requests to `http://shop.local/` through Ingress `shop` in namespace `e2-ing` re
 
 > `kubectl config use-context kind-lab`
 
-Deployment `ingest` in namespace `e2-jobs` restarts over and over — `kubectl describe` shows the containers are being killed, not crashing on their own. Find the cause and make a stable, `Running` Deployment. Record the container's `lastState` reason word (e.g. `OOMKilled`) in `/opt/course/10/reason.txt`.
+Deployment `ingest` in namespace `e2-jobs` restarts over and over — `kubectl describe` shows the containers are being killed, not crashing on their own. Find the cause and make a stable, `Running` Deployment. Record the crashing container's `lastState` reason word (e.g. `OOMKilled`) in `/opt/course/10/reason.txt` — read it from the old Pod **before** you fix the Deployment; the replacement Pod has an empty `lastState`.
 
 ### Task 11 — 6 min · 4 pts · Troubleshooting · `kind`
 
@@ -1296,7 +1297,7 @@ k -n e2-hpa get hpa web | grep -E 'cpu: [0-9]+%/' >/dev/null && echo "metrics fl
 test "$(k -n e2-batch get deploy batch -o jsonpath='{.status.readyReplicas}')" = "2" && echo "scheduled"
 test "$(k -n e2-batch get pods -o jsonpath='{.items[*].spec.nodeName}' | tr ' ' '\n' | sort -u)" = "lab-worker2" && echo "on edge node"
 k -n e2-batch get deploy batch -o yaml | grep -q 'workload' && echo "toleration added"
-k get node lab-worker2 -o jsonpath='{.spec.taints}' | grep -q 'workload=batch' && echo "taint intact"
+test "$(k get node lab-worker2 -o jsonpath='{.spec.taints[?(@.key=="workload")].value}')" = batch && echo "taint intact"
 ```
 
 **Pass:** all four — add toleration `workload=batch:NoSchedule` to the Pod template. **Partial credit:** yes — 3 pts if Pods run but the affinity was deleted instead (violates the constraint).
@@ -1391,8 +1392,11 @@ k taint node lab-worker2 workload=batch:NoSchedule- 2>/dev/null || true
 sudo rm -rf /opt/course
 helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb-system 2>/dev/null
 
-# vms — the cluster is left upgraded to 1.37.1 with w2 rejoined; nothing else to undo.
-# For the next exam, rebuild VMs per that exam's stated version.
+# vms — after this exam the cluster is at MIXED versions: cp1 is on 1.37.1, w1 and w2 are still
+# on 1.36.5 (task 4 upgrades the control plane only), with w2 rejoined. Nothing else to undo here.
+# Exam 3 expects a healthy 1.37.x cluster on all three nodes — before starting it, upgrade w1 and
+# w2 with the T4.04 node-upgrade block (apt kubelet/kubectl 1.37.1 + `kubeadm upgrade node`), or
+# rebuild the VMs at the version that exam states.
 ```
 
 ---
@@ -1438,7 +1442,7 @@ On node `w1`, create a static Pod running `nginx:1.27` named `e3-static` in name
 
 > `kubectl config use-context kind-lab`
 
-In namespace `e3-sec`, grant ServiceAccount `node-reader` the ability to `get` and `list` **Nodes** — cluster-wide, and nothing else. Verify with `kubectl auth can-i`, and record the answers for `list nodes` and for `delete nodes` in `/opt/course/05/rbac-check.txt`.
+In namespace `e3-sec`, grant ServiceAccount `node-reader` the ability to `get` and `list` **Nodes** — cluster-wide, and nothing else. Verify with `kubectl auth can-i`, and record the answers for `list nodes` and for `delete nodes` — one `yes`/`no` answer per line — in `/opt/course/05/rbac-check.txt`.
 
 ### Task 6 — 7 min · 5 pts · Services & Networking · `kind`
 
@@ -1480,7 +1484,7 @@ Create a DaemonSet `node-agent` in namespace `e3-agents` running `nginx:1.27` on
 
 > `kubectl config use-context kind-lab`
 
-The two replicas of Deployment `ha-web` in namespace `e3-ha` must never share a node. Add a required pod anti-affinity (topology key `kubernetes.io/hostname`) and roll it out so the Pods sit on different nodes.
+The two replicas of Deployment `ha-web` in namespace `e3-ha` are pinned onto one node by a `nodeSelector`, and they must never share a node. Remove the pin, add a required pod anti-affinity (topology key `kubernetes.io/hostname`), and roll it out so the Pods sit on different nodes.
 
 ### Task 13 — 5 min · 4 pts · Workloads & Scheduling · `kind`
 
@@ -1510,7 +1514,7 @@ A Kustomize overlay at `/opt/course/16/app/overlays/prod` fails to build (`kubec
 
 > `kubectl config use-context kind-lab`
 
-In namespace `e3-docs`: create a PersistentVolume `shared` (hostPath `/mnt/shared`, 2Gi, `ReadWriteMany`, `Retain`, class `manual`), a claim `shared` requesting 1Gi RWX, and a Deployment `docs` (2 replicas, `nginx:1.27`) mounting the claim at `/usr/share/nginx/html`.
+In namespace `e3-docs`: create a PersistentVolume `shared` (hostPath `/mnt/shared`, 2Gi, `ReadWriteMany`, `Retain`, class `manual`), a claim `shared` requesting 1Gi RWX in storage class `manual` so it binds to that PV, and a Deployment `docs` (2 replicas, `nginx:1.27`) mounting the claim at `/usr/share/nginx/html`.
 
 ## Appendix 3A — setup (run BEFORE the clock)
 
@@ -1693,7 +1697,24 @@ k create ns e3-docs
 
 # --- task 12 objects ---
 k create ns e3-ha
-k -n e3-ha create deploy ha-web --image=nginx:1.27 --replicas=2
+cat <<'YAML' | k -n e3-ha apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ha-web
+spec:
+  replicas: 2
+  strategy: {type: Recreate}   # a rolling update would wedge: the pinned Pod holds its node until a replacement is Ready, and required anti-affinity blocks that replacement — Recreate frees the node first
+  selector:
+    matchLabels: {app: ha-web}
+  template:
+    metadata:
+      labels: {app: ha-web}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: lab-worker}   # both replicas start on this one node
+      containers:
+      - {name: nginx, image: nginx:1.27}
+YAML
 
 # --- task 14 objects ---
 k create ns e3-ws
@@ -1888,7 +1909,7 @@ k auth can-i list nodes --as=system:serviceaccount:e3-sec:node-reader | grep -qx
 k auth can-i get nodes --as=system:serviceaccount:e3-sec:node-reader | grep -qx yes && echo "get yes"
 k auth can-i delete nodes --as=system:serviceaccount:e3-sec:node-reader | grep -qx no && echo "delete no"
 k auth can-i list pods --as=system:serviceaccount:e3-sec:node-reader | grep -qx no && echo "pods no"
-grep -q yes /opt/course/05/rbac-check.txt && grep -q no /opt/course/05/rbac-check.txt && echo "file ok"
+grep -qx yes /opt/course/05/rbac-check.txt && grep -qx no /opt/course/05/rbac-check.txt && echo "file ok"
 ```
 
 **Pass:** nodes get/list `yes`, delete `no`, pods `no`, file written — needs a `ClusterRole` + `ClusterRoleBinding` (a `Role` cannot grant cluster-scoped `nodes`). **Partial credit:** yes — 4 pts for correct grants with a missing file.
@@ -1976,11 +1997,11 @@ grep -qx 3 /opt/course/11/agents.txt && echo "file ok"
 
 ```bash
 test "$(k -n e3-ha get deploy ha-web -o jsonpath='{.status.readyReplicas}')" = "2" && echo "2 ready"
-test "$(k -n e3-ha get pods -o jsonpath='{.items[*].spec.nodeName}' | tr ' ' '\n' | sort -u | wc -l)" = "2" && echo "different nodes"
-k -n e3-ha get deploy ha-web -o yaml | grep -q podAntiAffinity && echo "anti-affinity present"
+test "$(k -n e3-ha get pods -o jsonpath='{.items[*].spec.nodeName}' | tr ' ' '\n' | sort -u | wc -l)" -eq 2 && echo "different nodes"
+test -n "$(k -n e3-ha get deploy ha-web -o jsonpath='{.spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution}')" && echo "required anti-affinity"
 ```
 
-**Pass:** all three — `requiredDuringSchedulingIgnoredDuringExecution` podAntiAffinity on `kubernetes.io/hostname`. **Partial credit:** yes — 3 pts for a soft (`preferred`) rule that happens to spread them today.
+**Pass:** all three — the `nodeSelector` pin is removed and `requiredDuringSchedulingIgnoredDuringExecution` podAntiAffinity on `kubernetes.io/hostname` added. A `preferred` rule fails the last check on purpose; a do-nothing Deployment already fails "different nodes" because the setup pins both Pods to `lab-worker`. **Partial credit:** yes — 3 pts for a soft (`preferred`) rule that happens to spread them today.
 </details>
 
 <details>
@@ -2061,7 +2082,7 @@ test "$(k -n e3-docs get deploy docs -o jsonpath='{.status.readyReplicas}')" = "
 | 9 | Svc & Net | kind | 8 | monitor→web, web→api flow; rogue denied |
 | 10 | Svc & Net | kind | 7 | Gateway Programmed, `gw.local` serves |
 | 11 | Workloads | kind | 5 | agent on all 3 nodes, file written |
-| 12 | Workloads | kind | 5 | replicas on different nodes |
+| 12 | Workloads | kind | 5 | pin removed, required anti-affinity, replicas on different nodes |
 | 13 | Workloads | kind | 4 | Job `etl` 3 succeeded, file written |
 | 14 | Troubleshooting | kind | 6 | `writer` writes with `fsGroup` |
 | 15 | Storage | kind | 5 | `keep` Retain, claim Bound |

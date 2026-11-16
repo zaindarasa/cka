@@ -2,7 +2,7 @@
 
 All 76 topics in learning order. Written lessons are links; the rest are planned.
 
-**Status key:** `ready` = passed its first review clean. `written (1 review + 1 fix)` = reviewed once and fixed once, not re-checked. `written` = drafted, review pending. `not written yet` = planned.
+**Status key:** `ready` = passed its first review clean. `written (1 review + 1 fix)` = reviewed once and fixed once, not re-checked. `written` = drafted, review pending. `not written yet` = planned. This column tracks **review status only** — it says nothing about whether the lesson's command output was captured on a live cluster. For capture status see the `REAL OUTPUT (...)` vs `EXPECTED OUTPUT (not captured)` labels inside each lesson and the generated inventory in `VERIFY-LIST.md`.
 
 ## Part 1 - Linux for Kubernetes
 

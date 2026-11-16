@@ -1,9 +1,10 @@
-/* Dusk (dark): plum-grey ground, coral accent, JetBrains Mono at 20px. Palette chosen from the reading-style picker. */
+/* Dusk (dark): graphite ground, muted coral accent, JetBrains Mono at 20px. Softened for long reading (was plum-grey/near-white). */
 :root {
-  --bg: #1d1a22; --surf: #272330; --fg: #e8e3ec; --mut: #a39bad; --acc: #ff8f70; --line: #3a3445;
-  --key: #ffb199; --str: #a8dcc0; --num: #f2c879; --fn: #9fc7ff;
+  --bg: #17171a; --surf: #1f1f23; --fg: #c9c9c9; --mut: #999999; --acc: #e08a72; --line: #2c2c31;
+  --key: #d8a48f; --str: #97bfa9; --num: #d4b878; --fn: #8fb4dd;
+  --code-out: #121215;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --fs: 19px; --lh: 1.75; --ws: -.2em; --hover: #ffcfbf;
+  --fs: 19px; --lh: 1.75; --ws: -.2em; --hover: #f0b8a5;
 }
 html { color-scheme: dark }
 /* mono fonts leave wide gaps between words; pull them in outside code */
@@ -16,7 +17,7 @@ body { background: var(--bg); color: var(--fg); font: 400 var(--fs)/var(--lh) va
 .sidebar { background: var(--surf); border-right: 1px solid var(--line); width: 340px; color: var(--fg); font-size: 15px; line-height: 1.5 }
 .sidebar > h1 { margin: 0 0 1rem; padding: 0 1rem }
 .sidebar > h1 .app-name-link { color: var(--acc); font: 700 18px var(--mono) }
-.sidebar ul li a { color: var(--mut); font: 400 15px/1.45 var(--mono); border-bottom: 0; padding: .28em 0 }
+.sidebar ul li a { color: #a8a8a8; font: 400 15px/1.45 var(--mono); border-bottom: 0; padding: .28em 0 }
 .sidebar ul li a:hover { text-decoration: none; color: var(--fg) }
 .sidebar ul li.active > a { color: var(--acc); border-right: 3px solid var(--acc); font-weight: 700 }
 .sidebar ul li { margin: 0 }
@@ -56,9 +57,26 @@ body { background: var(--bg); color: var(--fg); font: 400 var(--fs)/var(--lh) va
 
 /* code */
 .markdown-section code { font: 400 .95em var(--mono); background: var(--surf); color: var(--key); padding: .08em .4em; border-radius: 5px }
-.markdown-section pre { background: var(--surf); border: 1px solid var(--line); border-radius: 10px; margin: 0 0 1.4em; padding: 0; overflow-x: auto }
-.markdown-section pre > code { display: block; background: none; color: var(--fg); font-size: .95em; line-height: 1.65; padding: 1em 1.2em }
+.markdown-section pre { background: var(--surf); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 10px; margin: 0 0 1.4em; padding: 0; overflow-x: auto; position: relative }
+.markdown-section pre > code { display: block; background: none; color: var(--fg); font-size: .95em; line-height: 1.55; padding: .95em 1.2em }
+/* commands get the accent bar, manifests a cool bar, captured output a dimmed well */
+.markdown-section pre[data-lang="bash"], .markdown-section pre[data-lang="sh"], .markdown-section pre[data-lang="shell"], .markdown-section pre[data-lang="console"] { border-left-color: var(--acc) }
+.markdown-section pre[data-lang="yaml"], .markdown-section pre[data-lang="yml"], .markdown-section pre[data-lang="json"], .markdown-section pre[data-lang="diff"] { border-left-color: var(--fn) }
+.markdown-section pre[data-lang="text"], .markdown-section pre:not([data-lang]) { background: var(--code-out) }
+.markdown-section pre[data-lang="text"] > code, .markdown-section pre:not([data-lang]) > code { color: #b3b3b3 }
 .markdown-section pre[data-lang]::after { color: var(--mut); font: 500 11px var(--mono); letter-spacing: .08em; top: .5em; right: .9em }
+.markdown-section pre[data-lang="text"]::after, .markdown-section pre:not([data-lang])::after { content: "output" }
+/* a lead-in line (e.g. "REAL OUTPUT (...):") hugs the block it introduces */
+.markdown-section p:has(+ pre) { margin-bottom: .5em }
+.markdown-section p:has(+ pre[data-lang="text"]) { color: var(--mut); font-size: .85em; letter-spacing: .02em }
+.markdown-section pre:has(+ pre) { margin-bottom: .55em }
+/* copy-code plugin button */
+.markdown-section .docsify-copy-code-button { background: transparent; color: var(--mut); font: 500 11px var(--mono); letter-spacing: .06em; border: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 8px 0 10px 0; padding: .35em .8em; position: absolute; bottom: 0; right: 0; cursor: pointer; opacity: 0; transition: opacity .15s, color .15s }
+.markdown-section pre:hover .docsify-copy-code-button, .markdown-section .docsify-copy-code-button:focus-visible { opacity: 1 }
+.markdown-section .docsify-copy-code-button:hover { color: var(--hover) }
+.markdown-section .docsify-copy-code-button.success, .markdown-section .docsify-copy-code-button.error { opacity: 1 }
+.markdown-section .docsify-copy-code-button.success { color: var(--str) }
+.markdown-section .docsify-copy-code-button.error { color: var(--acc) }
 .token.comment, .token.prolog, .token.doctype, .token.cdata { color: var(--mut); font-style: italic }
 .token.punctuation, .token.operator { color: var(--mut) }
 .token.property, .token.tag, .token.key, .token.atrule, .token.attr-name, .token.keyword, .token.selector { color: var(--key) }

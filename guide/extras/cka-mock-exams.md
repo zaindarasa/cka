@@ -6,7 +6,7 @@
 
 ## How to run a mock
 
-- **Timer:** set 120 minutes, hard stop. Suggested minutes per task sum to ~108-112, leaving buffer for context switches and verification — the same margin the real exam needs (reported shape: ~17 tasks, ~66% to pass, see [exam intel](exam-intel.md)).
+- **Timer:** set 120 minutes, hard stop. Suggested minutes per task sum to ~105-110, leaving buffer for context switches and verification — the same margin the real exam needs (reported shape: ~17 tasks, ~66% to pass, see [exam intel](exam-intel.md)).
 - **Contexts:** the real exam puts each task on its own SSH session and cluster context. These mocks simulate that with two environments — every task header names one. **Type the context line every time you start a task, even if you never switched:**
   - `kind` tasks: `kubectl config use-context kind-lab` (context `kind-lab`, cluster `lab`, nodes `lab-control-plane`, `lab-worker`, `lab-worker2`, Calico — from `env/kind-up.sh`, see [conventions](../00-conventions.md)).
   - `vms` tasks: the kubeadm cluster — `ssh cp1`, `sudo -i`, `export KUBECONFIG=/etc/kubernetes/admin.conf`. Node work happens on `w1`/`w2` via `ssh` + `sudo -i`; `exit` between nodes, no nested `ssh`.
@@ -26,10 +26,10 @@
 
 | Env | Tasks | Needs before the clock |
 |---|---|---|
-| `kind` (context `kind-lab`) | 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 | Standard `lab` cluster. Add-ons for task 11 only: `helm`, `metallb` + address pool, `traefik` — installed by Appendix 1A. |
+| `kind` (context `kind-lab`) | 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 4 and 11: `helm`, `metallb` + address pool, `traefik` — installed by Appendix 1A. |
 | `vms` (`cp1`, `w1`, `w2`; kubeadm 1.37.x, Calico, etcd 3.7.0) | 1, 2, 3, 14 | Healthy 1.37.x cluster, `etcdctl`/`etcdutl` on `cp1` (see [T4.04](../part4-cka/T4.04-manage-the-lifecycle-of-kubernetes-clusters.md) §7.0). Appendix 1A injects two faults on it. |
 
-All `vms` faults are injected before the clock starts. On this cluster no injected fault kills `kubectl` — the tasks can be attempted in any order.
+All `vms` faults are injected before the clock starts. On this cluster no injected fault kills `kubectl`, but one dependency is real: Task 1's restored `archive-web` Pods can only report ready once the node and scheduler faults are repaired — fix Tasks 2 and 3 before Task 1's final rollout check, or come back to it at the end.
 
 ## Tasks
 
@@ -55,7 +55,7 @@ On the kubeadm cluster, every newly created Pod stays `Pending` with no events �
 
 > `kubectl config use-context kind-lab`
 
-In namespace `e1-shop`, the Service `shop` is unreachable — connections from inside the cluster are refused even though the Pods are healthy. Make `http://shop.e1-shop.svc.cluster.local` return the nginx welcome page. Do not delete the Service or the Deployment.
+Helm release `site` in namespace `e1-helm` was installed from the chart at `/opt/course/04/site-chart`, but its application never came up. Find what the release got wrong and fix it with `helm upgrade` — do not edit the Deployment or Service directly. Make `http://site.e1-helm.svc.cluster.local` answer, and write the release's current revision into `/opt/course/04/revision.txt`.
 
 ### Task 5 — 6 min · 6 pts · Cluster Architecture · `kind`
 
@@ -67,19 +67,19 @@ The ServiceAccount `reader` in namespace `e1-rbac` must be able to **list and wa
 
 > `kubectl config use-context kind-lab`
 
-Deployment `web` in namespace `e1-web` was updated to a new image and the rollout is stuck — not all replicas serve. Roll it back to the previous working revision, confirm every Pod runs the older image, and write the revision number you rolled back to into `/opt/course/06/revision.txt`.
+Deployment `web` in namespace `e1-web` was updated to a new image and the rollout is stuck — not all replicas serve. Roll it back to the previous working revision, confirm every Pod runs the older image, and write the Deployment's **current** revision number — the newest entry `kubectl rollout history` reports after the rollback — into `/opt/course/06/revision.txt`.
 
 ### Task 7 — 8 min · 8 pts · Services & Networking · `kind`
 
 > `kubectl config use-context kind-lab`
 
-Namespace `e1-sec` runs `frontend`, `api` (Service, port 80) and `db` (Service, port 5432). Create NetworkPolicies so that: `frontend` can reach `api` on TCP 80 and nothing else can; `api` can reach `db` on TCP 5432 and can still resolve names; `db` accepts connections only from `api` on 5432; and no Pod outside `e1-sec` can initiate connections into `api` or `db`. Pods not mentioned keep unrestricted egress.
+Namespace `e1-sec` runs `frontend`, `api` (Service, port 80) and `db` (Service, port 5432). Create NetworkPolicies so that: `frontend` can reach `api` on TCP 80 and nothing else can; `api` can reach `db` on TCP 5432 and nothing else, yet can still resolve names; `db` accepts connections only from `api` on 5432; and no Pod outside `e1-sec` can initiate connections into `api` or `db`. Pods not mentioned keep unrestricted egress.
 
 ### Task 8 — 7 min · 8 pts · Storage · `kind`
 
 > `kubectl config use-context kind-lab`
 
-In namespace `e1-vol`: create a PersistentVolume `e1-pv` of type hostPath `/mnt/e1data`, capacity 1Gi, access mode ReadWriteOnce, reclaim policy `Retain`, storage class `manual`. Create a claim `e1-pvc` requesting 200Mi with the same access mode and class. Create a Pod `e1-volpod` (`busybox:1.36`, `sleep 3600`) that mounts the claim at `/data`. Write the text `hello cka` into `/data/marker.txt` and record the PV's `STATUS` column in `/opt/course/08/pv-status.txt`.
+In namespace `e1-vol`: create a PersistentVolume `e1-pv` of type hostPath `/mnt/e1data`, capacity 1Gi, access mode ReadWriteOnce, reclaim policy `Retain`, storage class `manual`. Create a claim `e1-pvc` requesting 200Mi with the same access mode and class. Create a Pod `e1-volpod` (`busybox:1.36`, `sleep 3600`) that mounts the claim at `/data`, scheduled onto node `lab-worker`. Write the text `hello cka` into `/data/marker.txt` and record the PV's `STATUS` column in `/opt/course/08/pv-status.txt`.
 
 ### Task 9 — 6 min · 5 pts · Troubleshooting · `kind`
 
@@ -139,7 +139,7 @@ In namespace `e1-pay`, create a Deployment `pay` with 3 replicas of `nginx:1.27`
 
 Run by the peer/proctor, not the candidate. Two parts: the kind part runs on the workstation; the vms part runs on the kubeadm nodes. Order does not matter between them.
 
-**Part 1 — kind setup.** Installs the task-11 add-ons (helm, metallb + pool, traefik), then creates every object the exam expects — including the injected faults. Takes ~10 minutes.
+**Part 1 — kind setup.** Installs the add-ons for tasks 4 and 11 (helm, metallb + pool, traefik), then creates every object the exam expects — including the injected faults. Takes ~10 minutes.
 
 ```bash
 #!/usr/bin/env bash
@@ -148,9 +148,9 @@ set -euo pipefail
 shopt -s expand_aliases; alias k=kubectl
 k config use-context kind-lab
 k get nodes
-sudo mkdir -p /opt/course/{05,06,08,13} && sudo chown -R "$USER" /opt/course   # answer files live on this host
+sudo mkdir -p /opt/course/{04,05,06,08,13,16} && sudo chown -R "$USER" /opt/course   # answer files live on this host
 
-# --- add-ons for task 11 (Ingress) — needs helm, metallb, traefik ---
+# --- add-ons for tasks 4 (helm release) and 11 (Ingress) — helm, metallb, traefik ---
 env/kind-addons.sh helm
 export PATH="$HOME/.local/bin:$PATH"
 env/kind-addons.sh metallb
@@ -178,21 +178,59 @@ k -n traefik rollout status deploy/traefik --timeout=300s
 k -n traefik get svc traefik   # must show an EXTERNAL-IP
 
 # --- task 4 objects ---
-k create ns e1-shop
-k -n e1-shop create deploy shop --image=nginx:1.27 --replicas=2
-k -n e1-shop rollout status deploy/shop --timeout=180s
-cat <<'YAML' | k -n e1-shop apply -f -
+mkdir -p /opt/course/04/site-chart/templates
+cat > /opt/course/04/site-chart/Chart.yaml <<'YAML'
+apiVersion: v2
+name: site
+version: 0.1.0
+YAML
+cat > /opt/course/04/site-chart/values.yaml <<'YAML'
+image:
+  repository: nginx
+  tag: "1.2x"          # no such tag — the release installs, the Pod never pulls
+service:
+  port: 80
+page: "helm-ok"
+YAML
+cat > /opt/course/04/site-chart/templates/page.yaml <<'YAML'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: site-page
+data:
+  index.html: {{ .Values.page | quote }}
+YAML
+cat > /opt/course/04/site-chart/templates/deploy.yaml <<'YAML'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: site
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: site}
+  template:
+    metadata:
+      labels: {app: site}
+    spec:
+      containers:
+      - name: web
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        volumeMounts: [{name: page, mountPath: /usr/share/nginx/html}]
+      volumes:
+      - name: page
+        configMap: {name: site-page}
+YAML
+cat > /opt/course/04/site-chart/templates/svc.yaml <<'YAML'
 apiVersion: v1
 kind: Service
 metadata:
-  name: shop
+  name: site
 spec:
-  selector:
-    app: shpo
-  ports:
-  - port: 80
-    targetPort: 8080
+  selector: {app: site}
+  ports: [{port: {{ .Values.service.port }}, targetPort: 80}]
 YAML
+helm install site /opt/course/04/site-chart -n e1-helm --create-namespace
 
 # --- task 5 objects ---
 k create ns e1-rbac
@@ -205,12 +243,12 @@ k -n e1-web rollout status deploy/web --timeout=180s
 k -n e1-web set image deploy/web nginx=nginx:1.2x
 sleep 5
 
-# --- task 7 objects ---
+# --- task 7 objects (pinned to lab-worker: bare Pods on lab-worker2 would block the task-16 drain) ---
 k create ns e1-sec
-k -n e1-sec run frontend --image=busybox:1.36 -l app=frontend -- sleep 3600
-k -n e1-sec run api --image=busybox:1.36 -l app=api -- \
+k -n e1-sec run frontend --image=busybox:1.36 -l app=frontend --overrides='{"spec":{"nodeName":"lab-worker"}}' -- sleep 3600
+k -n e1-sec run api --image=busybox:1.36 -l app=api --overrides='{"spec":{"nodeName":"lab-worker"}}' -- \
   sh -c 'mkdir -p /www && echo api-ok > /www/index.html && exec httpd -f -p 80 -h /www'
-k -n e1-sec run db --image=busybox:1.36 -l app=db -- \
+k -n e1-sec run db --image=busybox:1.36 -l app=db --overrides='{"spec":{"nodeName":"lab-worker"}}' -- \
   sh -c 'mkdir -p /www && echo db-ok > /www/index.html && exec httpd -f -p 5432 -h /www'
 k -n e1-sec expose pod api --port=80
 k -n e1-sec expose pod db --port=5432
@@ -285,6 +323,7 @@ metadata:
   name: pg-app
   namespace: e1-db
 spec:
+  nodeName: lab-worker   # pinned: a controller-less Pod on lab-worker2 would block the task-16 drain
   containers:
   - name: c
     image: busybox:1.36
@@ -299,17 +338,17 @@ YAML
 k create ns e1-ing
 k -n e1-ing create deploy web --image=nginx:1.27
 k -n e1-ing expose deploy web --port=80
-k -n e1-ing run api --image=busybox:1.36 -l app=api -- \
+k -n e1-ing run api --image=busybox:1.36 -l app=api --overrides='{"spec":{"nodeName":"lab-worker"}}' -- \
   sh -c 'mkdir -p /www && echo api-ok > /www/index.html && exec httpd -f -p 8080 -h /www'
 k -n e1-ing expose pod api --port=8080
 
 # --- task 12 objects ---
 k create ns e1-net
-k -n e1-net run records --image=busybox:1.36 -l app=records -- \
+k -n e1-net run records --image=busybox:1.36 -l app=records --overrides='{"spec":{"nodeName":"lab-worker"}}' -- \
   sh -c 'mkdir -p /www && echo records-ok > /www/index.html && exec httpd -f -p 80 -h /www'
 k -n e1-net expose pod records --port=80
 k create ns e1-client
-k -n e1-client run client --image=busybox:1.36 -- sleep 3600
+k -n e1-client run client --image=busybox:1.36 --overrides='{"spec":{"nodeName":"lab-worker"}}' -- sleep 3600
 
 # --- task 13 objects ---
 k create ns e1-edge
@@ -319,9 +358,27 @@ k -n e1-edge create deploy edge --image=nginx:1.27 --replicas=2
 k label node lab-worker disk=ssd --overwrite
 k create ns e1-cache
 
-# --- task 16 objects ---
+# --- task 16 objects: all four replicas are pinned to lab-worker2 so the drain is real work ---
 k create ns e1-drain
-k -n e1-drain create deploy web --image=nginx:1.27 --replicas=4
+cat <<'YAML' | k -n e1-drain apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 4
+  selector:
+    matchLabels: {app: web}
+  template:
+    metadata:
+      labels: {app: web}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: lab-worker2}
+      containers:
+      - {name: nginx, image: nginx:1.27}
+YAML
+k -n e1-drain rollout status deploy/web --timeout=180s
+k -n e1-drain get pods -o jsonpath='{range .items[*]}{.metadata.uid}{"\n"}{end}' | sort > /opt/course/16/.pre-drain-uids   # grader fixture: these UIDs must all be gone after the drain
 
 # --- task 17 namespace ---
 k create ns e1-pay
@@ -346,6 +403,7 @@ k create ns e1-archive
 k -n e1-archive create deploy archive-web --image=nginx:1.27 --replicas=2
 k -n e1-archive create configmap marker --from-literal=day=monday
 k -n e1-archive rollout status deploy/archive-web --timeout=180s
+k get ns e1-archive -o jsonpath='{.metadata.uid}' > /opt/course/01/.ns-uid   # grader fixture: proves the namespace came back from the snapshot, not a hand-recreate
 
 # task 3 setup
 mv /etc/kubernetes/manifests/kube-scheduler.yaml /root/
@@ -361,7 +419,7 @@ exit
 
 ## Appendix 1B — grading
 
-Score each task per its block, then fill the score sheet. Every command below runs where the task ran (`kind-lab` on your workstation, or `cp1` as root unless it says `w1`/`w2`).
+Score each task per its block, then fill the score sheet. Commands are grouped by where they run: `kind-lab` blocks on your workstation; `cp1`, `w1` and `w2` blocks on the named node as root — each over its own ssh session. Exit back to your workstation before switching nodes, and never `ssh` from inside another node.
 
 <details>
 <summary>Task 1 — etcd backup and restore (10 pts)</summary>
@@ -370,21 +428,24 @@ Score each task per its block, then fill the score sheet. Every command below ru
 test -f /opt/course/01/etcd-snapshot.db && echo "snapshot file exists"
 etcdutl snapshot status /opt/course/01/etcd-snapshot.db >/dev/null && echo "snapshot valid"
 k get ns e1-archive -o name | grep -qx namespace/e1-archive && echo "namespace restored"
+test "$(k get ns e1-archive -o jsonpath='{.metadata.uid}')" = "$(cat /opt/course/01/.ns-uid)" && echo "uid matches the snapshot"
 test "$(k -n e1-archive get cm marker -o jsonpath='{.data.day}')" = "monday" && echo "cm back"
 k -n e1-archive rollout status deploy/archive-web --timeout=180s && echo "deploy ready"   # pods may need a minute to be re-created by the kubelets
 ```
 
-**Pass:** all five checks. **Partial credit:** yes — 4 pts for a valid snapshot alone; 7 pts if the restore was attempted but the namespace never came back (wrong data-dir, stale caches not restarted).
+**Pass:** all six checks — the namespace UID comparison is what proves a real restore (a hand-recreated namespace gets a fresh UID and fails). **Partial credit:** yes — 4 pts for a valid snapshot alone; 7 pts if the restore was attempted but the namespace never came back (wrong data-dir, stale caches not restarted).
 </details>
 
 <details>
 <summary>Task 2 — dead worker node (8 pts)</summary>
 
 ```bash
+# --- on cp1 as root (ssh cp1; sudo -i) ---
 test "$(k get node w1 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = "True" && echo "w1 Ready"
-ssh w1 'sudo systemctl is-active kubelet' | grep -q '^active$' && echo "kubelet active"
-ssh w1 'sudo systemctl is-enabled kubelet' | grep -q '^enabled$' && echo "kubelet enabled"
 ! k get node w1 -o jsonpath='{.spec.taints}' | grep -q 'unreachable' && echo "taint gone"
+# --- on w1 as root (ssh w1; sudo -i — a separate session, exit cp1 first) ---
+systemctl is-active kubelet | grep -q '^active$' && echo "kubelet active"
+systemctl is-enabled kubelet | grep -q '^enabled$' && echo "kubelet enabled"
 ```
 
 **Pass:** all four checks. **Partial credit:** yes — 5 pts if the node is `Ready` but the kubelet is not `enabled` (the fault returns at the next reboot).
@@ -404,16 +465,19 @@ k -n default wait --for=condition=Ready pod/s-test --timeout=90s && echo "new po
 </details>
 
 <details>
-<summary>Task 4 — unreachable Service (6 pts)</summary>
+<summary>Task 4 — broken helm release (6 pts)</summary>
 
 ```bash
-test "$(k -n e1-shop get svc shop -o jsonpath='{.spec.selector.app}')" = "shop" && echo "selector fixed"
-test "$(k -n e1-shop get endpointslices -l kubernetes.io/service-name=shop -o jsonpath='{.items[0].ports[0].port}')" = "80" && echo "targetPort fixed"
-test "$(k -n e1-shop get endpointslices -l kubernetes.io/service-name=shop -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]}{"\n"}{end}' | grep -c .)" = "2" && echo "two endpoints"
-k -n e1-shop run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c 'sleep 2; wget -qO- -T3 http://shop | grep -o nginx' | grep -q nginx && echo "HTTP 200"
+R=$(helm -n e1-helm history site | awk 'NR>1{print $1}' | sort -n | tail -1)
+helm -n e1-helm status site | grep -q 'STATUS: deployed' && echo "release deployed"
+test "${R:-0}" -gt 1 && echo "upgraded via helm (rev $R)"   # kubectl edits leave this at 1
+test "$(k -n e1-helm get deploy site -o jsonpath='{.spec.template.spec.containers[0].image}')" = "nginx:1.27" && echo "image fixed"
+test "$(k -n e1-helm get deploy site -o jsonpath='{.status.readyReplicas}')" = "1" && echo "ready"
+k -n e1-helm run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c 'sleep 2; wget -qO- -T3 http://site | grep -o helm-ok' | grep -q helm-ok && echo "svc answers"
+grep -qx "$R" /opt/course/04/revision.txt && echo "file ok"
 ```
 
-**Pass:** the Service answers by name — which requires both fixes. **Partial credit:** yes — 3 pts for exactly one of {selector, targetPort} fixed.
+**Pass:** all five — the expected fix is `helm upgrade site /opt/course/04/site-chart --set image.tag=1.27 -n e1-helm` (or correcting `values.yaml` first). The `helm history` check proves the fix went through the release — a `kubectl set image` edit leaves revision at 1. **Partial credit:** yes — 4 pts for a working app fixed by hand (revision still 1) or a correct upgrade with the file missing/wrong.
 </details>
 
 <details>
@@ -422,12 +486,15 @@ k -n e1-shop run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c
 ```bash
 k -n e1-rbac auth can-i list pods --as=system:serviceaccount:e1-rbac:reader | grep -qx yes && echo "can list"
 k -n e1-rbac auth can-i watch pods --as=system:serviceaccount:e1-rbac:reader | grep -qx yes && echo "can watch"
+k -n e1-rbac auth can-i get pods --as=system:serviceaccount:e1-rbac:reader | grep -qx no && echo "get not granted"
+k -n e1-rbac auth can-i delete pods --as=system:serviceaccount:e1-rbac:reader | grep -qx no && echo "delete not granted"
+k -n e1-rbac auth can-i list deployments --as=system:serviceaccount:e1-rbac:reader | grep -qx no && echo "no other resources"
 k -n e1-rbac auth can-i list secrets --as=system:serviceaccount:e1-rbac:reader | grep -qx no && echo "cannot list secrets"
 k auth can-i list pods -n default --as=system:serviceaccount:e1-rbac:reader | grep -qx no && echo "namespace-scoped only"
 grep -q '^yes$' /opt/course/05/rbac.txt && grep -q '^no$' /opt/course/05/rbac.txt && echo "file ok"
 ```
 
-**Pass:** four checks (the file must hold one `yes` and one `no` line). **Partial credit:** yes — 4 pts for the correct grants with the file missing or wrong.
+**Pass:** all eight checks — "list and watch, nothing else" means `get`, `delete` and other resources must all answer `no` (the file must hold one `yes` and one `no` line). **Partial credit:** yes — 4 pts for the correct grants with the file missing or wrong.
 </details>
 
 <details>
@@ -436,10 +503,11 @@ grep -q '^yes$' /opt/course/05/rbac.txt && grep -q '^no$' /opt/course/05/rbac.tx
 ```bash
 test "$(k -n e1-web get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}')" = "nginx:1.25" && echo "old image back"
 test "$(k -n e1-web get deploy web -o jsonpath='{.status.readyReplicas}')" = "2" && echo "all ready"
-grep -qE '^[0-9]+$' /opt/course/06/revision.txt && echo "file ok"
+REV=$(k -n e1-web get deploy web -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}')
+test "$(cat /opt/course/06/revision.txt)" = "$REV" && echo "file ok (current revision $REV)"
 ```
 
-**Pass:** image is `nginx:1.25`, 2 ready replicas, file holds a number. **Partial credit:** yes — 4 pts for a successful rollback with a missing/wrong file.
+**Pass:** image is `nginx:1.25`, 2 ready replicas, file holds the Deployment's *current* revision — the new top entry in `rollout history` after the undo (revision `3` in the reference run: the rolled-back template is re-used as a *new* revision, so the pre-update revision `1` is the wrong answer). **Partial credit:** yes — 4 pts for a successful rollback with a missing/wrong file.
 </details>
 
 <details>
@@ -456,11 +524,13 @@ chk frontend db.$S 5432 DENY
 chk db api.$S 80 DENY
 chk api db.$S 5432 ALLOW
 k -n $S exec api -- nslookup db.$S.svc.cluster.local >/dev/null 2>&1 || { echo "WRONG: api lost DNS"; bad=$((bad+1)); }
+CIP=$(k -n default get svc kubernetes -o jsonpath='{.spec.clusterIP}')   # a Service IP — outside the Pod network
+k -n $S exec api -- nc -z -w2 "$CIP" 443 >/dev/null 2>&1 && { echo "WRONG: api egress not restricted"; bad=$((bad+1)); }
 k -n default run outside-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c "nc -z -w2 api.$S 80" >/dev/null 2>&1 && { echo "WRONG: outside pod reached api"; bad=$((bad+1)); }
 echo "mismatches: $bad"; test $bad -eq 0
 ```
 
-**Pass:** `mismatches: 0`. **Partial credit:** yes — 6 pts if only the DNS row fails (a very common miss), 4 pts if only the "outside namespace" row fails.
+**Pass:** `mismatches: 0`. **Partial credit:** yes — 6 pts for a single mismatch (usually the DNS row or the api-egress restriction row, both very common misses), 4 pts if only the "outside namespace" row fails.
 </details>
 
 <details>
@@ -496,12 +566,13 @@ k -n e1-app get pods | grep -v CreateContainerConfigError | grep -q Running && e
 
 ```bash
 test "$(k -n e1-db get pvc pgdata -o jsonpath='{.status.phase}')" = "Bound" && echo "bound"
+test "$(k -n e1-db get pvc pgdata -o jsonpath='{.spec.volumeName}')" = "pg-vol" && echo "bound to pg-vol"
 test "$(k -n e1-db get pod pg-app -o jsonpath='{.status.phase}')" = "Running" && echo "pod running"
 k -n e1-db get pvc pgdata -o jsonpath='{.spec.selector.matchLabels.vol}' | grep -qx pg && echo "claim untouched"
 k get pv pg-vol -o jsonpath='{.metadata.labels.vol}' | grep -qx pg && echo "pv labelled"
 ```
 
-**Pass:** claim `Bound` to `pg-vol` (relabelled `vol=pg`, or a new matching PV bound to it) and the claim's spec unchanged. **Partial credit:** yes — 3 pts if the claim binds to a *new* PV the candidate created but `pg-vol` was left untouched (spec asked to use `pg-vol`).
+**Pass:** claim `Bound` **to `pg-vol`** — `pg-vol` relabelled `vol=pg`, the claim's spec untouched, `pg-app` Running. A *new* PV the candidate created does not pass: the claim must bind the existing `pg-vol`. **Partial credit:** yes — 3 pts if the claim binds only to a new PV the candidate created while `pg-vol` stays untouched (the task pointed at `pg-vol`).
 </details>
 
 <details>
@@ -570,12 +641,15 @@ k -n e1-cache get deploy cache -o yaml | grep -q requiredDuringScheduling && ech
 <summary>Task 16 — drain and return (5 pts)</summary>
 
 ```bash
+test -s /opt/course/16/.pre-drain-uids && \
+  ! k -n e1-drain get pods -o jsonpath='{.items[*].metadata.uid}' | tr ' ' '\n' | grep -qxFf /opt/course/16/.pre-drain-uids \
+  && echo "pre-drain pods evicted"
 test "$(k get node lab-worker2 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = "True" && echo "ready"
 ! k get node lab-worker2 -o jsonpath='{.spec.unschedulable}' | grep -q true && echo "schedulable"
 test "$(k -n e1-drain get deploy web -o jsonpath='{.status.readyReplicas}')" = "4" && echo "web back"
 ```
 
-**Pass:** node `Ready` **and** uncordoned with all replicas back. **Partial credit:** yes — 3 pts if the drain was correct but the node was left cordoned (half the task).
+**Pass:** the pre-drain Pod UIDs recorded by the setup are **all gone** (the drain really happened — an untouched node fails here even though `Ready` and `web back` would pass), the node is `Ready` and schedulable, and all 4 replicas are back. **Partial credit:** yes — 3 pts if the drain was correct but the node was left cordoned (half the task).
 </details>
 
 <details>
@@ -596,7 +670,7 @@ test "$(k -n e1-pay get pdb pay-pdb -o jsonpath='{.spec.minAvailable}')" = "2" &
 | 1 | Cluster Arch | vms | 10 | snapshot valid + `e1-archive` restored + `archive-web` ready |
 | 2 | Troubleshooting | vms | 8 | `w1` Ready, kubelet active **and** enabled |
 | 3 | Troubleshooting | vms | 7 | scheduler Pod back, new Pod schedules, 4 manifests |
-| 4 | Troubleshooting | kind | 6 | `shop` answers by name (selector + targetPort) |
+| 4 | Troubleshooting | kind | 6 | helm release upgraded, `site` answers, file written |
 | 5 | Cluster Arch | kind | 6 | SA can list/watch pods in `e1-rbac` only, file written |
 | 6 | Workloads | kind | 5 | rolled back to `nginx:1.25`, file written |
 | 7 | Svc & Net | kind | 8 | netpol matrix `mismatches: 0` |
@@ -608,7 +682,7 @@ test "$(k -n e1-pay get pdb pay-pdb -o jsonpath='{.spec.minAvailable}')" = "2" &
 | 13 | Svc & Net | kind | 4 | NodePort answers, file written |
 | 14 | Cluster Arch | vms | 4 | days match `check-expiration` apiserver row |
 | 15 | Workloads | kind | 5 | 3 replicas on the `disk=ssd` node |
-| 16 | Cluster Arch | kind | 5 | `lab-worker2` uncordoned, `web` 4/4 |
+| 16 | Cluster Arch | kind | 5 | `web` Pods evicted, `lab-worker2` uncordoned, `web` 4/4 |
 | 17 | Workloads | kind | 4 | `pay` 3/3 + `pay-pdb` minAvailable 2 |
 | | | | **100** | **pass ≈ 66 pts** |
 
@@ -624,6 +698,7 @@ k delete pv e1-pv pg-vol --ignore-not-found
 k label node lab-worker disk- 2>/dev/null || true
 k uncordon lab-worker2 2>/dev/null || true
 for n in lab-control-plane lab-worker lab-worker2; do docker exec $n rm -rf /mnt/e1data /mnt/pg-vol 2>/dev/null; done
+sudo rm -rf /opt/course
 # optional, if the cluster will not be reused soon:
 helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb-system 2>/dev/null
 
@@ -643,7 +718,7 @@ rm -rf /opt/course /root/etcd.yaml.bak
 
 | Env | Tasks | Needs before the clock |
 |---|---|---|
-| `kind` (context `kind-lab`) | 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 9 and 12: `helm`, `metallb` + pool, `traefik`, `metrics-server` — installed by Appendix 2A. |
+| `kind` (context `kind-lab`) | 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 9, 11 and 12: `helm`, `metallb` + pool, `traefik`, `metrics-server` — installed by Appendix 2A. |
 | `vms` (`cp1`, `w1`, `w2`; kubeadm, Calico, etcd 3.7.0) | 1, 2, 3, 4, 5 | **Cluster built at v1.36.5** (v1.36 apt repo, `env/vm-prereqs.sh`, `kubeadm init` per [T4.02](../part4-cka/T4.02-create-and-manage-kubernetes-clusters-using.md)). `etcdctl`/`etcdutl` on `cp1`. Appendix 2A brings the VMs to that state and injects the timed faults. |
 
 This exam is the kubeadm-heavy one: 5 of 17 tasks are on the `vms` cluster. One injected fault blocks the other `vms` tasks until you find and repair it — work out the order yourself. That is intentional.
@@ -684,7 +759,7 @@ Create an etcd snapshot at `/opt/course/05/etcd-snapshot.db`. Then write the tab
 
 > `kubectl config use-context kind-lab`
 
-In namespace `e2-sec`, ServiceAccount `app-sa` should be able to `list` and `watch` Pods — the logs of the app show `Forbidden` instead. A Role named `pod-reader` with the correct rules already exists, as does a RoleBinding `app-rb`. Fix the misconfiguration; do not create new Roles.
+The CustomResourceDefinition `reports.lab.example.com` is installed and namespace `e2-crd` exists. Applying `/opt/course/06/report.yaml` is rejected by the API server. Read the CRD's schema, fix the manifest, and get a `Report` named `report-a` accepted in `e2-crd` — keep the manifest's `spec.note` value as written.
 
 ### Task 7 — 6 min · 7 pts · Services & Networking · `kind`
 
@@ -714,7 +789,7 @@ Deployment `ingest` in namespace `e2-jobs` restarts over and over — `kubectl d
 
 > `kubectl config use-context kind-lab`
 
-Pods in namespace `e2-mon` cannot resolve any DNS name — everything is reachable by IP, and other namespaces resolve fine. Restore name resolution for `e2-mon` while keeping the namespace's egress restriction working (Pods there may still only reach the Pod network).
+Something in namespace `e2-load` is burning CPU and starving its neighbours. Using `kubectl top`, identify the busiest Pod in `e2-load` and write its name to `/opt/course/11/noisy.txt`. Then use `kubectl logs` to copy that Pod's most recent log line into `/opt/course/11/last-log.txt`.
 
 ### Task 12 — 6 min · 6 pts · Workloads & Scheduling · `kind`
 
@@ -781,7 +856,7 @@ sed -i 's#--authorization-mode=Node,RBAC#--authorization-mode=AlwaysDeny#' /etc/
 echo "setup complete — hand over in ~60 s"
 ```
 
-**Part 2 — kind setup.** Installs add-ons for task 9 (ingress) and task 12 (metrics), then seeds objects and faults.
+**Part 2 — kind setup.** Installs add-ons for task 9 (ingress) and tasks 11–12 (metrics-server), then seeds objects and faults.
 
 ```bash
 #!/usr/bin/env bash
@@ -789,9 +864,9 @@ echo "setup complete — hand over in ~60 s"
 set -euo pipefail
 shopt -s expand_aliases; alias k=kubectl
 k config use-context kind-lab
-sudo mkdir -p /opt/course/{10,17} && sudo chown -R "$USER" /opt/course   # answer files live on this host
+sudo mkdir -p /opt/course/{06,10,11,17} && sudo chown -R "$USER" /opt/course   # answer files live on this host
 
-# --- add-ons (tasks 9, 12) ---
+# --- add-ons (tasks 9, 11, 12) ---
 env/kind-addons.sh helm
 export PATH="$HOME/.local/bin:$PATH"
 env/kind-addons.sh metallb
@@ -819,38 +894,47 @@ env/kind-addons.sh metrics-server
 k -n traefik rollout status deploy/traefik --timeout=300s
 
 # --- task 6 objects ---
-k create ns e2-sec
-k -n e2-sec create serviceaccount app-sa
-cat <<'YAML' | k -n e2-sec apply -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+mkdir -p /opt/course/06
+k create ns e2-crd
+cat <<'YAML' | k apply -f -
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
 metadata:
-  name: pod-reader
-rules:
-- apiGroups: [""]
-  resources: [pods]
-  verbs: [list, watch]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+  name: reports.lab.example.com
+spec:
+  group: lab.example.com
+  names:
+    kind: Report
+    plural: reports
+    singular: report
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: [mode]
+            properties:
+              mode:
+                type: string
+                enum: [fast, slow]
+              note:
+                type: string
+YAML
+cat > /opt/course/06/report.yaml <<'YAML'
+apiVersion: lab.example.com/v1
+kind: Report
 metadata:
-  name: cm-reader
-rules:
-- apiGroups: [""]
-  resources: [configmaps]
-  verbs: [get]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: app-rb
-subjects:
-- kind: ServiceAccount
-  name: app-sa
-roleRef:
-  kind: Role
-  name: cm-reader
-  apiGroup: rbac.authorization.k8s.io
+  name: report-a
+  namespace: e2-crd
+spec:
+  mode: turbo        # not in the schema's enum — the API rejects this manifest
+  note: pilot
 YAML
 
 # --- task 7 objects ---
@@ -924,37 +1008,18 @@ spec:
       containers:
       - name: c
         image: busybox:1.36
-        command: ["sh", "-c", "dd if=/dev/zero of=/dev/shm/big bs=1M count=200; sleep 3600"]
+        command: ["sh", "-c", "head -c 200m /dev/zero | tail >/dev/null; sleep 3600"]
         resources:
           requests: {memory: 32Mi}
           limits: {memory: 64Mi}
 YAML
 
 # --- task 11 objects ---
-k create ns e2-mon
-cat <<'YAML' | k -n e2-mon apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: probe
-  labels: {app: probe}
-spec:
-  containers:
-  - {name: c, image: busybox:1.36, command: ["sleep", "3600"]}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: strict-egress
-spec:
-  podSelector: {}
-  policyTypes: [Egress]
-  egress:
-  - to:
-    - ipBlock: {cidr: 192.168.0.0/16}
-    ports:
-    - {protocol: TCP, port: 80}
-YAML
+mkdir -p /opt/course/11
+k create ns e2-load
+k -n e2-load run quiet-1 --image=busybox:1.36 -- sleep 3600
+k -n e2-load run quiet-2 --image=busybox:1.36 -- sleep 3600
+k -n e2-load run noisy --image=busybox:1.36 -- yes pressure-marker
 
 # --- task 12 objects ---
 k create ns e2-hpa
@@ -1061,13 +1126,15 @@ YAML
 k create ns e2-store
 k -n e2-store run db --image=busybox:1.36 -l app=db -- sleep 3600
 
-for ns in e2-net e2-ing e2-mon e2-hpa e2-assets e2-store; do
+for ns in e2-net e2-ing e2-load e2-hpa e2-assets e2-store; do
   k -n "$ns" wait --for=condition=Ready pod --all --timeout=180s || true
 done
 echo "kind setup complete"   # e2-api/e2-batch/e2-jobs/e2-data pods intentionally do not go Ready
 ```
 
 ## Appendix 2B — grading
+
+Score each task per its block, then fill the score sheet. Commands are grouped by where they run: `kind-lab` blocks on your workstation; `cp1`, `w1` and `w2` blocks on the named node as root — each over its own ssh session. Exit back to your workstation before switching nodes, and never `ssh` from inside another node.
 
 <details>
 <summary>Task 1 — API answers Forbidden (7 pts)</summary>
@@ -1086,10 +1153,12 @@ k -n kube-system get pods | grep -E 'kube-apiserver.*Running' >/dev/null && echo
 <summary>Task 2 — runtime down on w1 (7 pts)</summary>
 
 ```bash
+# --- on cp1 as root (ssh cp1; sudo -i) ---
 test "$(k get node w1 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = "True" && echo "w1 Ready"
-ssh w1 'sudo systemctl is-active containerd' | grep -q '^active$' && echo "containerd active"
-ssh w1 'sudo systemctl is-enabled containerd' | grep -q '^enabled$' && echo "containerd enabled"
-ssh w1 'sudo systemctl is-active kubelet' | grep -q '^active$' && echo "kubelet active"
+# --- on w1 as root (ssh w1; sudo -i — a separate session, exit cp1 first) ---
+systemctl is-active containerd | grep -q '^active$' && echo "containerd active"
+systemctl is-enabled containerd | grep -q '^enabled$' && echo "containerd enabled"
+systemctl is-active kubelet | grep -q '^active$' && echo "kubelet active"
 ```
 
 **Pass:** all four — `systemctl enable --now containerd` on `w1`. **Partial credit:** yes — 5 pts for `Ready` without `enabled`.
@@ -1125,22 +1194,23 @@ k -n kube-system get pod kube-apiserver-cp1 -o jsonpath='{.spec.containers[0].im
 
 ```bash
 etcdutl snapshot status /opt/course/05/etcd-snapshot.db >/dev/null && echo "snapshot valid"
-grep -qiE 'total keys|revision|hash' /opt/course/05/snapshot-status.txt && echo "status table saved"
+grep -q '^+---' /opt/course/05/snapshot-status.txt && grep -qi 'total keys' /opt/course/05/snapshot-status.txt && echo "status table saved"
 ```
 
-**Pass:** both. **Partial credit:** yes — 3 pts for the snapshot alone.
+**Pass:** both — the file must show the `etcdutl snapshot status -w table` grid (the `+---+` border plus the `TOTAL KEYS` column). A `-w json` dump fails on purpose: its `revision`/`hash` keys are not the table the task asked for. **Partial credit:** yes — 3 pts for the snapshot alone.
 </details>
 
 <details>
-<summary>Task 6 — RBAC binding fix (6 pts)</summary>
+<summary>Task 6 — rejected CustomResource (6 pts)</summary>
 
 ```bash
-k -n e2-sec auth can-i list pods --as=system:serviceaccount:e2-sec:app-sa | grep -qx yes && echo "list yes"
-k -n e2-sec auth can-i watch pods --as=system:serviceaccount:e2-sec:app-sa | grep -qx yes && echo "watch yes"
-test "$(k -n e2-sec get rolebinding app-rb -o jsonpath='{.roleRef.name}')" = "pod-reader" && echo "roleRef fixed"
+k get crd reports.lab.example.com >/dev/null 2>&1 && echo "crd intact"
+k -n e2-crd get report report-a >/dev/null 2>&1 && echo "cr accepted"
+M=$(k -n e2-crd get report report-a -o jsonpath='{.spec.mode}'); { [ "$M" = fast ] || [ "$M" = slow ]; } && echo "valid mode: $M"
+test "$(k -n e2-crd get report report-a -o jsonpath='{.spec.note}')" = "pilot" && echo "note kept"
 ```
 
-**Pass:** all three — `roleRef` points at `pod-reader` now. **Partial credit:** yes — 4 pts if the SA gained the rights through a *new* binding the candidate created (task said fix the existing one, but functionally correct).
+**Pass:** all four — the candidate read the schema, changed `spec.mode` to an enumerated value, and applied. **Partial credit:** yes — 4 pts if `report-a` exists but `spec.note` was changed or dropped (fixed the rejection, not the manifest faithfully).
 </details>
 
 <details>
@@ -1194,16 +1264,16 @@ grep -qi oom /opt/course/10/reason.txt && echo "file ok"
 </details>
 
 <details>
-<summary>Task 11 — DNS swallowed by egress policy (4 pts)</summary>
+<summary>Task 11 — noisiest Pod (4 pts)</summary>
 
 ```bash
-k -n e2-mon exec probe -- nslookup kubernetes.default.svc.cluster.local >/dev/null 2>&1 && echo "dns back"
-k -n e2-mon get netpol strict-egress >/dev/null && echo "policy still there"
-CIP=$(k -n default get svc kubernetes -o jsonpath='{.spec.clusterIP}')   # a Service IP: outside the pod CIDR
-! k -n e2-mon exec probe -- nc -z -w2 "$CIP" 443 >/dev/null 2>&1 && echo "egress still restricted"
+TOP=$(k -n e2-load top pod --no-headers | sort -k2 -nr | head -1 | awk '{print $1}')
+test -n "$TOP" && echo "metrics available, top is $TOP"
+test "$TOP" = "$(cat /opt/course/11/noisy.txt 2>/dev/null)" && echo "noisy identified"
+test "$(cat /opt/course/11/last-log.txt 2>/dev/null)" = "$(k -n e2-load logs "$TOP" --tail=1)" && echo "log line ok"
 ```
 
-**Pass:** all three — the fix is adding a DNS egress rule (UDP+TCP 53 to the kube-dns Pods in `kube-system`) to `strict-egress`, not deleting it. **Partial credit:** yes — 2 pts if DNS works because the whole policy was deleted (security intent lost).
+**Pass:** all three — `noisy` tops the CPU column and its current last log line (`pressure-marker`) was captured. **Partial credit:** yes — 2 pts for the right Pod name with a wrong or missing log file.
 </details>
 
 <details>
@@ -1213,7 +1283,7 @@ CIP=$(k -n default get svc kubernetes -o jsonpath='{.spec.clusterIP}')   # a Ser
 test "$(k -n e2-hpa get hpa web -o jsonpath='{.spec.minReplicas}')" = "2" && \
 test "$(k -n e2-hpa get hpa web -o jsonpath='{.spec.maxReplicas}')" = "6" && \
 test "$(k -n e2-hpa get hpa web -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}')" = "50" && echo "hpa correct"
-k -n e2-hpa get hpa web | grep -E '[0-9]+%' >/dev/null && echo "metrics flowing"
+k -n e2-hpa get hpa web | grep -E 'cpu: [0-9]+%/' >/dev/null && echo "metrics flowing"
 ```
 
 **Pass:** spec correct and `TARGETS` shows a live percentage (may take ~60 s). **Partial credit:** yes — 4 pts for a correct spec with metrics not yet reporting (`<unknown>` — note it as a timing issue, not a fault).
@@ -1290,12 +1360,12 @@ IP=$(k -n e2-store get pod db -o jsonpath='{.status.podIP}'); grep -qx "$IP" /op
 | 3 | Cluster Arch | vms | 6 | `w2` rejoined and `Ready`, `join.sh` saved |
 | 4 | Cluster Arch | vms | 9 | `cp1` v1.37.1, Ready, schedulable |
 | 5 | Cluster Arch | vms | 4 | valid snapshot + status table file |
-| 6 | Cluster Arch | kind | 6 | SA can list+watch pods (`roleRef` fixed) |
+| 6 | Cluster Arch | kind | 6 | `report-a` CR accepted by the schema, `note` kept |
 | 7 | Svc & Net | kind | 7 | client→db allowed, others denied, policy intact |
 | 8 | Troubleshooting | kind | 6 | `api` has 2 ready endpoints |
 | 9 | Svc & Net | kind | 7 | `shop.local` serves the nginx page |
 | 10 | Troubleshooting | kind | 6 | `ingest` stable, reason file written |
-| 11 | Troubleshooting | kind | 4 | DNS back, egress still restricted |
+| 11 | Troubleshooting | kind | 4 | noisiest Pod named, last log line saved |
 | 12 | Workloads | kind | 6 | HPA 50%/2–6 reporting metrics |
 | 13 | Workloads | kind | 6 | `batch` Pods Running on `lab-worker2`, taint kept |
 | 14 | Workloads | kind | 3 | all four quota limits set |
@@ -1312,10 +1382,13 @@ IP=$(k -n e2-store get pod db -o jsonpath='{.status.podIP}'); grep -qx "$IP" /op
 # kind
 k config use-context kind-lab
 for n in $(k get ns -o name | grep 'namespace/e2-' | cut -d/ -f2); do k delete ns "$n" --wait=false; done
+k delete crd reports.lab.example.com --ignore-not-found
 k delete sc fast --ignore-not-found
-k delete pv --all --ignore-not-found 2>/dev/null || true
+# only PVs whose claim lived in an e2- namespace — never `delete pv --all`, another exam's PVs may exist
+for p in $(k get pv -o jsonpath='{range .items[*]}{.spec.claimRef.namespace}{" "}{.metadata.name}{"\n"}{end}' | awk '$1 ~ /^e2-/ {print $2}'); do k delete pv "$p" --ignore-not-found; done
 k label node lab-worker2 zone- 2>/dev/null || true
 k taint node lab-worker2 workload=batch:NoSchedule- 2>/dev/null || true
+sudo rm -rf /opt/course
 helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb-system 2>/dev/null
 
 # vms — the cluster is left upgraded to 1.37.1 with w2 rejoined; nothing else to undo.
@@ -1330,7 +1403,7 @@ helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb
 
 | Env | Tasks | Needs before the clock |
 |---|---|---|
-| `kind` (context `kind-lab`) | 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 6 and 10: `helm`, `metallb`, `gateway-api-crds`, `traefik` — installed by Appendix 3A. |
+| `kind` (context `kind-lab`) | 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | Standard `lab` cluster. Add-ons for task 10: `helm`, `metallb`, `gateway-api-crds`, `traefik` — installed by Appendix 3A. |
 | `vms` (`cp1`, `w1`, `w2`; kubeadm 1.37.x, Calico, etcd 3.7.0) | 1, 2, 3, 4 | Healthy 1.37.x cluster, `etcdctl`/`etcdutl` on `cp1`. Appendix 3A stages the objects and injects the timed faults. |
 
 One injected fault blocks the other `vms` tasks until you find and repair it. That is deliberate — real incident work is ordered by dependencies, not by task number.
@@ -1371,7 +1444,7 @@ In namespace `e3-sec`, grant ServiceAccount `node-reader` the ability to `get` a
 
 > `kubectl config use-context kind-lab`
 
-Service `edge` (type `LoadBalancer`) in namespace `e3-edge` never receives an `EXTERNAL-IP` — it sits at `<pending>` while the Ingress controller's Service already has one. The MetalLB stack is installed and a pool exists. Give `edge` a reachable external address **without changing the existing pool or the `traefik` Service**. Verify with `curl`.
+Pods cluster-wide resolve in-cluster names but nothing outside: `nslookup kubernetes.default.svc.cluster.local` answers, `nslookup www.kubernetes.io` times out. The cause is a recent change to CoreDNS itself. Restore external name resolution for the whole cluster without breaking in-cluster names.
 
 ### Task 7 — 5 min · 5 pts · Troubleshooting · `kind`
 
@@ -1383,7 +1456,7 @@ Pod `client` in namespace `e3-dns` cannot resolve `data.e3-dns.svc.cluster.local
 
 > `kubectl config use-context kind-lab`
 
-Namespace `e3-quota` needs 6 replicas of Deployment `web` — scaling to 6 fails with a `forbidden` admission error. Make all 6 run. The ResourceQuota `compute` exists for a reason: change only that object and the Deployment's replica count — nothing else.
+Namespace `e3-quota` needs 6 replicas of Deployment `web` — `kubectl scale` accepts the change, yet only 4 Pods ever run and the ReplicaSet events show `FailedCreate` errors (`forbidden: exceeded quota`). Make all 6 run. The ResourceQuota `compute` exists for a reason: change only that object and the Deployment's replica count — nothing else.
 
 ### Task 9 — 7 min · 8 pts · Services & Networking · `kind`
 
@@ -1419,7 +1492,7 @@ In namespace `e3-jobs`, create a Job `etl` running `busybox:1.36` with the comma
 
 > `kubectl config use-context kind-lab`
 
-Deployment `writer` in namespace `e3-ws` cannot write to its mounted volume — the logs show `Permission denied`. Fix the security context so the write succeeds; do not change the volume type or the mount path.
+Deployment `writer` in namespace `e3-ws` cannot write to its mounted volume — the logs show `Permission denied` even though the Pod keeps running. Fix the security context so the write succeeds; do not change the volume type, the mount path, or the init container.
 
 ### Task 15 — 6 min · 5 pts · Storage · `kind`
 
@@ -1450,11 +1523,13 @@ alias k=kubectl
 mkdir -p /opt/course/01   # the only /opt/course dir needed on cp1; kind tasks write to the workstation
 k get nodes   # all Ready, healthy 1.37.x
 
-# task 1 setup
+# task 1 setup — e3-sys is created BEFORE the snapshot so the restore does not erase it (task 4 needs it)
 k create ns e3-critical
 k -n e3-critical create deploy crit-app --image=nginx:1.27 --replicas=2
 k -n e3-critical create configmap crit-cfg --from-literal=env=prod
 k -n e3-critical rollout status deploy/crit-app --timeout=180s
+k create ns e3-sys
+k get ns e3-critical -o jsonpath='{.metadata.uid}' > /opt/course/01/.ns-uid   # grader fixture: proves the namespace came back from the snapshot, not a hand-recreate
 ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
   --cacert=/etc/kubernetes/pki/etcd/ca.crt \
   --cert=/etc/kubernetes/pki/etcd/server.crt \
@@ -1462,9 +1537,6 @@ ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
   snapshot save /opt/course/01/pre-loss.db
 etcdutl snapshot status /opt/course/01/pre-loss.db -w table   # must print a valid status
 k delete ns e3-critical
-
-# task 4 setup
-k create ns e3-sys
 
 # task 2 setup
 sed -i 's#path: /etc/kubernetes/pki/etcd$#path: /etc/kubernetes/pki/etcd-miss#' /etc/kubernetes/manifests/etcd.yaml
@@ -1526,9 +1598,13 @@ k create ns e3-sec
 k -n e3-sec create serviceaccount node-reader
 
 # --- task 6 objects ---
-k create ns e3-edge
-k -n e3-edge create deploy edge --image=nginx:1.27 --replicas=2
-k -n e3-edge expose deploy edge --port=80 --type=LoadBalancer
+# poison CoreDNS's forward block — in-cluster names keep resolving, external names time out
+k -n kube-system get cm coredns -o yaml | \
+  sed 's#forward \. /etc/resolv.conf#forward . 10.96.0.99#' | k apply -f -
+k -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -q '10.96.0.99' \
+  || { echo "Corefile has no 'forward . /etc/resolv.conf' line — adjust the fault first"; exit 1; }
+k -n kube-system rollout restart deploy/coredns
+k -n kube-system rollout status deploy/coredns --timeout=120s
 
 # --- task 7 objects ---
 k create ns e3-dns
@@ -1636,6 +1712,13 @@ spec:
     spec:
       securityContext:
         runAsUser: 1000
+      initContainers:
+      - name: prep
+        image: busybox:1.36
+        securityContext:
+          runAsUser: 0   # needs root to set the ownership the task is about
+        command: ["sh", "-c", "chown 0:2000 /data && chmod 2770 /data"]
+        volumeMounts: [{name: d, mountPath: /data}]
       containers:
       - name: c
         image: busybox:1.36
@@ -1728,13 +1811,15 @@ metadata:
   name: prod
 EOF
 
-for ns in e3-edge e3-dns e3-net e3-gw e3-ha e3-vault; do
+for ns in e3-dns e3-net e3-gw e3-ha e3-vault; do
   k -n "$ns" wait --for=condition=Ready pod --all --timeout=180s || true
 done
-echo "kind setup complete"   # e3-ws pods intentionally do not go Ready
+echo "kind setup complete"   # the e3-ws pod runs but logs 'Permission denied' on its /data write
 ```
 
 ## Appendix 3B — grading
+
+Score each task per its block, then fill the score sheet. Commands are grouped by where they run: `kind-lab` blocks on your workstation; `cp1`, `w1` and `w2` blocks on the named node as root — each over its own ssh session. Exit back to your workstation before switching nodes, and never `ssh` from inside another node.
 
 <details>
 <summary>Task 1 — restore the lost namespace (10 pts)</summary>
@@ -1742,6 +1827,7 @@ echo "kind setup complete"   # e3-ws pods intentionally do not go Ready
 ```bash
 etcdutl snapshot status /opt/course/01/pre-loss.db >/dev/null && echo "snapshot was usable"
 k get ns e3-critical -o name | grep -qx namespace/e3-critical && echo "ns back"
+test "$(k get ns e3-critical -o jsonpath='{.metadata.uid}')" = "$(cat /opt/course/01/.ns-uid)" && echo "uid matches the snapshot"
 test "$(k -n e3-critical get cm crit-cfg -o jsonpath='{.data.env}')" = "prod" && echo "cm back"
 test "$(k -n e3-critical get deploy crit-app -o jsonpath='{.status.readyReplicas}')" = "2" && echo "deploy ready"
 ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
@@ -1749,7 +1835,7 @@ ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
   --key=/etc/kubernetes/pki/etcd/server.key endpoint health | grep -q 'is healthy' && echo "etcd healthy"
 ```
 
-**Pass:** all five. **Partial credit:** yes — 6 pts if the restore was attempted and the snapshot verified but the namespace never reappeared (data-dir not switched, or caches not restarted); 3 pts for a verified snapshot with no restore.
+**Pass:** all six — the namespace UID comparison is what proves a real restore (a hand-recreated namespace gets a fresh UID and fails). **Partial credit:** yes — 6 pts if the restore was attempted and the snapshot verified but the namespace never reappeared (data-dir not switched, or caches not restarted); 3 pts for a verified snapshot with no restore.
 </details>
 
 <details>
@@ -1769,23 +1855,26 @@ grep 'path: /etc/kubernetes/pki/etcd$' /etc/kubernetes/manifests/etcd.yaml >/dev
 <summary>Task 3 — swap after reboot (8 pts)</summary>
 
 ```bash
+# --- on cp1 as root (ssh cp1; sudo -i) ---
 test "$(k get node w1 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = "True" && echo "w1 Ready"
-ssh w1 'sudo systemctl is-active kubelet' | grep -q '^active$' && echo "kubelet active"
-test "$(ssh w1 'sudo swapon --show --noheadings | wc -l')" = "0" && echo "no swap"
-! ssh w1 'sudo grep -c swap-mock /etc/fstab' | grep -q '^[1-9]' && echo "fstab clean"
-ssh w1 'test ! -f /swap-mock' && echo "file removed"
+# --- on w1 as root (ssh w1; sudo -i — a separate session, exit cp1 first) ---
+systemctl is-active kubelet | grep -q '^active$' && echo "kubelet active"
+test "$(swapon --show --noheadings | wc -l)" = "0" && echo "no swap"
+test "$(grep -c '^[^#].*swap' /etc/fstab)" = "0" && echo "fstab clean"
 ```
 
-**Pass:** node `Ready`, swap off, **and** the `fstab` entry and file gone (that is the "survives the next reboot" half). **Partial credit:** yes — 5 pts for `Ready` with the fstab line still present (fault returns at reboot).
+**Pass:** node `Ready`, swap off, **and** no *active* swap line left in `fstab` — deleting or commenting the entry both count (commented lines do not match `^[^#]`), and the `/swap-mock` file itself may stay. **Partial credit:** yes — 5 pts for `Ready` with the fstab line still active (the fault returns at the next reboot).
 </details>
 
 <details>
 <summary>Task 4 — static Pod (4 pts)</summary>
 
 ```bash
+# --- on cp1 as root (ssh cp1; sudo -i) ---
 k -n e3-sys get pod -o jsonpath='{.items[0].metadata.name}' | grep -q '^e3-static-w1$' && echo "mirror pod"
 test "$(k -n e3-sys get pod e3-static-w1 -o jsonpath='{.status.phase}')" = "Running" && echo "running"
-test "$(ssh w1 'sudo ls /etc/kubernetes/manifests | wc -l')" -ge 1 && echo "manifest on node"   # any filename works
+# --- on w1 as root (ssh w1; sudo -i — a separate session, exit cp1 first) ---
+test "$(ls /etc/kubernetes/manifests | wc -l)" -ge 1 && echo "manifest on node"   # any filename works
 ```
 
 **Pass:** all three — the manifest lives in `w1:/etc/kubernetes/manifests`, the mirror Pod `e3-static-w1` runs in `e3-sys`. **Partial credit:** no.
@@ -1806,17 +1895,16 @@ grep -q yes /opt/course/05/rbac-check.txt && grep -q no /opt/course/05/rbac-chec
 </details>
 
 <details>
-<summary>Task 6 — LoadBalancer pending (5 pts)</summary>
+<summary>Task 6 — dead forwarder (5 pts)</summary>
 
 ```bash
-IP=$(k -n e3-edge get svc edge -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-test -n "$IP" && echo "has ip $IP"
-docker run --rm --network kind curlimages/curl:8.12.1 -s -m5 "http://$IP/" | grep -qi nginx && echo "answers"
-test -n "$(k -n traefik get svc traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" && echo "traefik untouched"
-k -n metallb-system get l2advertisement -o name | grep -q . && echo "advertisement exists"
+! k -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -q '10.96.0.99' && echo "poison forward gone"
+k -n kube-system rollout status deploy/coredns --timeout=60s >/dev/null && echo "coredns rolled out"
+k run dns-ext-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- nslookup -timeout=5 www.kubernetes.io >/dev/null 2>&1 && echo "external resolves"
+k run dns-int-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- nslookup -timeout=5 kubernetes.default.svc.cluster.local >/dev/null 2>&1 && echo "internal still works"
 ```
 
-**Pass:** `edge` has an `EXTERNAL-IP` and answers — expected fix is a second `IPAddressPool` (e.g. `.210-.220` of the kind subnet) plus an `L2Advertisement` for it; widening `lab-pool` also earns it despite the "do not change the pool" line only if you can justify it — flag it for review. **Partial credit:** yes — 3 pts for a pool created but no advertisement (IP assigned, unreachable).
+**Pass:** all four — the expected fix is editing the `coredns` ConfigMap's `forward .` line back to `/etc/resolv.conf` (or another reachable resolver) and `k -n kube-system rollout restart deploy/coredns`. A per-Pod `dnsConfig` workaround fails the probes on purpose — the task says restore resolution *for the whole cluster*. **Partial credit:** yes — 3 pts for a corrected Corefile never rolled out (the running coredns Pods still serve the old config, so resolution still times out).
 </details>
 
 <details>
@@ -1827,7 +1915,7 @@ k -n e3-dns exec client -- nslookup data.e3-dns.svc.cluster.local >/dev/null 2>&
 k -n e3-dns exec client -- sh -c 'wget -qO- -T4 http://data' | grep -q data-ok && echo "answers"
 ```
 
-**Pass:** both — `dnsPolicy` is immutable, so `client` must be recreated with `ClusterFirst` (or a `dnsConfig` pointing at the kube-dns ClusterIP). **Partial credit:** no.
+**Pass:** both — `dnsPolicy` is immutable, so `client` must be recreated with `ClusterFirst` (the default search list makes the bare `http://data` name work), or with `dnsPolicy: None` plus a `dnsConfig` giving the kube-dns ClusterIP **and** `searches: [e3-dns.svc.cluster.local]` — nameservers alone leave the bare name unresolvable. **Partial credit:** no.
 </details>
 
 <details>
@@ -1913,11 +2001,11 @@ grep -qx 3 /opt/course/13/etl-count.txt && echo "file ok"
 ```bash
 test "$(k -n e3-ws get deploy writer -o jsonpath='{.status.readyReplicas}')" = "1" && echo "running"
 P=$(k -n e3-ws get pod -l app=writer -o jsonpath='{.items[0].metadata.name}')
-k -n e3-ws exec "$P" -- ls /data/out.txt >/dev/null 2>&1 && echo "file written"
-k -n e3-ws get deploy writer -o yaml | grep -q fsGroup && echo "fsGroup set"
+test "$(k -n e3-ws exec "$P" -- cat /data/out.txt 2>/dev/null)" = "report" && echo "file written"
+k -n e3-ws get deploy writer -o yaml | grep -qE 'fsGroup|supplementalGroups|runAsGroup' && echo "group access set"
 ```
 
-**Pass:** all three — `securityContext.fsGroup` at Pod level (the emptyDir becomes group-writable for the non-root uid). **Partial credit:** yes — 4 pts for a working write achieved by `runAsUser: 0` instead (works, but loses the least-privilege point — flag it).
+**Pass:** all three — the init container left `/data` as `2770 root:2000`, so the fix is giving the app container group 2000: `fsGroup: 2000`, `supplementalGroups: [2000]` or `runAsGroup: 2000` at Pod level. **Partial credit:** yes — 4 pts for a working write achieved by `runAsUser: 0` instead (works, but loses the least-privilege point — flag it).
 </details>
 
 <details>
@@ -1967,7 +2055,7 @@ test "$(k -n e3-docs get deploy docs -o jsonpath='{.status.readyReplicas}')" = "
 | 3 | Troubleshooting | vms | 8 | `w1` Ready, swap off, fstab clean |
 | 4 | Cluster Arch | vms | 4 | `e3-static-w1` Running |
 | 5 | Cluster Arch | kind | 6 | SA gets/lists nodes cluster-wide only |
-| 6 | Svc & Net | kind | 5 | `edge` gets an IP and answers |
+| 6 | Svc & Net | kind | 5 | external DNS resolves, in-cluster names intact |
 | 7 | Troubleshooting | kind | 5 | `client` resolves + answers |
 | 8 | Troubleshooting | kind | 5 | 6 `web` replicas running, quota kept |
 | 9 | Svc & Net | kind | 8 | monitor→web, web→api flow; rogue denied |
@@ -1995,9 +2083,14 @@ helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb
 kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml 2>/dev/null || true
 rm -rf /opt/course
 for n in lab-control-plane lab-worker lab-worker2; do docker exec $n rm -rf /mnt/shared /mnt/keep 2>/dev/null; done
+# if task 6 was never solved, CoreDNS still points at the dead forwarder — restore it:
+k -n kube-system get cm coredns -o yaml | sed 's#forward \. 10\.96\.0\.99#forward . /etc/resolv.conf#' | k apply -f -
+k -n kube-system rollout restart deploy/coredns
 
 # vms — on w1 as root, if swap is still on from an unfinished task:
 swapoff /swap-mock 2>/dev/null; rm -f /swap-mock; sed -i '/swap-mock/d' /etc/fstab
+# on w1, task 4's static Pod manifest also stays behind — remove it (the mirror Pod dies on its own):
+rm -f /etc/kubernetes/manifests/e3-static*.yaml
 # on cp1: k delete ns e3-sys --ignore-not-found
 # if etcd was left running from /var/lib/etcd-restore, move data back to /var/lib/etcd (T4.04 Lab A cleanup)
 ```

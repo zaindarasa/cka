@@ -1,6 +1,6 @@
 # VERIFY-LIST
 
-Everything still to confirm on a live environment. Each lesson's section 11 lists these same items; this file collects them in one place, grouped by the environment needed.
+Everything still to confirm on a live environment, collected verbatim from each lesson's section 11 and grouped by the environment needed. Done-criteria checkbox lines are omitted.
 
 - **linux-vm**: one Ubuntu LTS VM (24.04+, 2 vCPU / 4 GB) with systemd and cgroup v2 (`multipass launch --name lab --cpus 2 --memory 4G`).
 - **kind**: `env/kind-up.sh` (kind v0.33.0, `kindest/node:v1.37.0`, 1 CP + 2 workers, Calico).
@@ -10,6 +10,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.01 (T1.01-bash-shell-essentials-for-exam-speed.md) — 10 expected-output blocks
 **Known limitation.** This machine has no Multipass VM and no kind cluster. Two Done criteria cannot be fully met here: "real terminal output" for everything on a VM (the `REAL OUTPUT (Docker)` blocks come from an Ubuntu 24.04 container, not a VM) and any output that needs an API server. To meet them: run the lab commands on an Ubuntu LTS VM (for example `multipass launch --name lab --cpus 2 --memory 4G --disk 20G`) with a 3-node kind cluster from `env/kind-up.sh` for the cluster steps, and replace the blocks below. The two Done criteria that the lesson does meet from Docker are the real `type -a k` and completion on the alias output (2.11, 2.15, section 5).
+
+Environment of every `REAL OUTPUT (Docker)` block: Ubuntu 24.04 container on arm64, GNU bash 5.2.21, bash-completion 1:2.11-8, kubectl v1.37.1 (linux/arm64 from dl.k8s.io), yq v4.54.1, procps `watch` 4.0.4, `file` 5.45.
+
 - `EXPECTED OUTPUT (not captured)`: Pod YAML from `k run web --image=nginx:1.27 $do` (section 4.1). In the container it failed without an API server on kubectl v1.37.1; whether it needs the server because of discovery or something else was not investigated. Confirm on a cluster, including whether `creationTimestamp: null` appears.
 - `EXPECTED OUTPUT (not captured)`: section 5 steps 5 and 6 (`k apply`, `jsonpath` returning `$HOME`, the namespace loop, `watch`), and the optional `k apply -f stack.yaml` in Lab 2.
 - `EXPECTED OUTPUT (not captured)`: the `man bash` pager (the container's man pages were removed), and the redrawing screen of `watch -n1` (ran, but a text capture was unreadable).
@@ -21,6 +24,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.02 (T1.02-text-processing-grep-sed-awk-cut.md) — 10 expected-output blocks
 **Known limitation.** The machine that produced this lesson has no Multipass and no Ubuntu VM, and the shared kind cluster was not available to this writer, so no output was captured from `kubectl`, from a kind node or from a kubeadm VM. The "Includes real output for every command at each pipe stage" criterion is therefore met for the plain Linux tools only (blocks labelled `REAL OUTPUT (Docker)`, Ubuntu 24.04 with GNU grep 3.11, sed 4.9, findutils 4.9.0, diffutils 3.10, mawk 1.3.4, yq v4.54.1) and not for `kubectl` pipelines. To meet it, run the lesson on a 3-node kind cluster (`kindest/node:v1.37.0`) and one Ubuntu VM and replace each block below.
+
+Blocks and claims that need a live v1.37 cluster or node:
+
 1. Section 2.11 and section 5: every `EXPECTED OUTPUT (not captured)` block (the `k get pods` tables, the `awk` and `jsonpath` results, the `xargs` label output, the image lists, the `docker exec ... find` / `grep -rn image:` output).
 2. **Column positions** of `k get pods -A -o wide` in v1.37 (the 10 columns NAMESPACE, NAME, READY, STATUS, RESTARTS, AGE, IP, NODE, NOMINATED NODE, READINESS GATES) and the `N (T ago)` format of the RESTARTS cell when a container has restarted.
 3. **Log paths** `/var/log/pods/<ns>_<pod>_<uid>/<container>/<restart-count>.log` and the `/var/log/containers` symlinks on containerd 2.x; rotated file naming (`0.log.<timestamp>`) and whether older rotations are gzip-compressed; the CRI line format `TIMESTAMP STREAM TAG MESSAGE`. The sample tree in section 2.12 is synthetic.
@@ -40,7 +46,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.03 (T1.03-vim-and-tmux-for-yaml-editing.md) — 15 expected-output blocks
 **Known limitation.** This lesson could not meet its "real `kubectl edit` validation failure" done criterion with captured output. I asked for the machine-wide kind lock for the full 20 minutes allowed by the conventions and another run held it the whole time, so I created no cluster and labelled every cluster-dependent block `EXPECTED OUTPUT (not captured)`. Message strings in those blocks were read from the `kubectl` v1.37.1 source (`editor.go`, `editoptions.go`), and the unknown parts are marked `...`. To meet the criterion, someone must run sections 5 and 7 on a 3-node kind cluster (`kindest/node:v1.37.0`) and replace those blocks. Everything about Vim, tmux, nano, `yq`, `cat -A`, and the `kubectl` YAML parse errors was run in Docker (`REAL OUTPUT (Docker)`).
+
 **Blocks labelled `EXPECTED OUTPUT (not captured)`, to be captured on kind:**
+
 1. Section 5, step 1: `namespace/lab-t103 created`, `deployment.apps/web created`, rollout status line.
 2. Section 5, step 2: the first lines of the `kubectl edit` buffer (header comments and the start of the YAML).
 3. Section 5, step 3: `deployment.apps/web edited` and the `jsonpath` read-back `TIER LOG_LEVEL`.
@@ -48,10 +56,29 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 5. Section 6 rows 3 and 7 (same strings as above, plus the conflict message).
 6. Section 7, all three labs: the real `kubectl apply` output, `rollout status` output and the verification lines (`POD_OK`, `FLEET_IMAGES_OK`, `FRONTEND_OK`, `WEB_UNTOUCHED`). The file edits and the `yq`/`grep` checks in the labs were run in Docker; the cluster steps were not.
 7. Lab 3: that `break.sh` leaves the saved file in `/tmp` and that the server refuses the change because of `spec.selector` (the claim comes from the Deployment API rules, and the reopen-then-cancel flow from the source; neither was run).
+
 **Version-dependent or environment-dependent facts, and their status:**
+
+| Item | Status |
+|---|---|
+| `kubectl edit` temp file name in v1.37 (`kubectl-edit-<digits>.yaml` in `$TMPDIR` or `/tmp`) | Read from the v1.37.1 source; not observed on a live v1.37 cluster. |
+| Whether the exam hosts ship a `~/.vimrc` | **UNVERIFIED.** The lesson teaches typing it. |
+| `yq` flavor and version on the exam hosts (labs use mikefarah v4 syntax) | **UNVERIFIED.** Only "`yq`" is in the tool list. |
+| nano installed on the exam hosts | **UNVERIFIED.** Not in the tool list; `vi` is the safe default. |
+| Whether `vi`/`vim` on the exam hosts is a full Vim or `vim.tiny`, and its version | **UNVERIFIED.** The OS of the exam hosts is also UNVERIFIED (research summary E22). |
+| Whether the exam terminal sends bracketed paste (so `:set paste` is not needed) | **UNVERIFIED.** `:set paste` is taught as a habit. |
+| tmux available on the exam hosts | **UNVERIFIED.** It is not in the tool list on the tips page. |
+| Whether a vimrc or home directory is shared between the exam's SSH hosts | **UNVERIFIED.** |
+| The exact name of the exam's `kubectl` alias | **UNVERIFIED** (the tips page wording is "kalias"; this lesson uses `k`). |
+| `E325` text, `STILL RUNNING` line | Real in a Docker container after `kill -9`; the `STILL RUNNING` line may not appear in a real crash on a VM. |
+| `kubectl` conflict message when `resourceVersion` is stale | Not captured; the cause is described in `kubectl edit --help` (real, `kubectl` v1.37.1 client). |
+| `nginx:1.25` and `nginx:1.27` exist as tags and run in the kind cluster | Not pulled. Replace with other pinned tags if a pull fails. |
 
 ### T1.04 (T1.04-users-groups-permissions-and-sudo.md) — 4 expected-output blocks
 **Known limitation.** This machine has no kind and no multipass, so the criterion "Includes real `ls -l /etc/kubernetes/pki` output from a kubeadm node" is NOT met with real output. The pki listing, the `/etc/kubernetes/*.conf` modes, the kubeconfig error text, the Pod outputs (parts C and D) and the lab 7.2 verification are labelled EXPECTED OUTPUT (not captured). To meet the criterion, run section 5 parts B, C and D on 3 VMs (kubeadm 1.37 `cp1`, `w1`, `w2`) or a 3-node kind cluster (kind v0.33.0, `kindest/node:v1.37.0`), and replace each expected block with the real one. The plain Linux outputs marked REAL OUTPUT (Docker, ubuntu:24.04) were captured in a container, not on a VM.
+
+Items to confirm on a live v1.37 cluster:
+
 1. Default modes and owners of everything under `/etc/kubernetes` after `kubeadm init` on 1.37: `pki/*.crt` 0644, `pki/*.key` 0600, `admin.conf`, `kubelet.conf`, `controller-manager.conf`, `scheduler.conf` 0600, `manifests/*.yaml` 0600 and the mode of `pki/sa.pub`. Also the file list itself (the listing in section 5 is a typical shape, not captured).
 2. Whether a `super-admin.conf` file exists next to `admin.conf` on 1.37 (kubeadm added it in 1.29, and `admin.conf` then moved to a `kubeadm:cluster-admins` group). Confirm that the copy-to-`~/.kube/config` flow in section 2.9 still works unchanged for a control-plane admin.
 3. The exact text of `kubectl` when `~/.kube/config` is root-owned and unreadable (shown as `error: error loading config file ... permission denied`).
@@ -64,11 +91,45 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.05 (T1.05-processes-and-signals.md) — 10 expected-output blocks
 **Known limitation.** This lesson was written on a machine without Multipass, and the single allowed kind cluster could not be created: the machine-wide lock `/tmp/kind-lab.lock` stayed held by another job for the whole 20-minute wait. Two "done" criteria that need a live cluster are therefore only partly met:
+
 - "Includes real output showing exit codes 137 and 143": met with `REAL OUTPUT (Docker)` for both codes (sections 2.5 and 2.11, from `docker stop` and from signals in a shell). It is **not** met for the Pod status (`lastState` in section 5.3), which is `EXPECTED OUTPUT (not captured)`.
 - "Facts the writer must verify on a real cluster" (default grace period 30, reason strings in `describe`): the default of 30 is stated by the Pod lifecycle docs page, but neither it nor the reason strings were seen on a v1.37 cluster.
 
+To close both, run section 5 and the labs on a 3-node kind cluster (`kindest/node:v1.37.0`), paste the output over the expected blocks, and adjust the text if it differs.
+
+Everything below is a claim or a block that was **not** confirmed on a live v1.37 cluster or VM.
+
+| # | Where | What to confirm |
+|---|---|---|
+| 1 | 5.1 | `terminationGracePeriodSeconds` shows `30` on a Pod with no value set; `time k delete pod slow` is about 30 s; exact text of the delete message (`pod "slow" deleted` with or without a namespace suffix) |
+| 2 | 5.2 | Log order `app: started`, `preStop: running`, `app: got SIGTERM, cleaning up`; delete time of about 2-3 s; that writing to `/proc/1/fd/1` from the hook reaches `k logs` |
+| 3 | 5.3 | `lastState.terminated.exitCode` 137 for `grace-demo` and 143 for `share-demo`; both `reason` strings; the layout of `Last State` in `k describe`; that a liveness kill runs the `preStop` hook and counts it inside the grace period; that `/pause` is PID 1 in `share-demo`; the `Killing` event text |
+| 4 | 2.5, 2.11 | Reason strings `Completed` (exit 0), `Error` (non-zero exit and SIGKILL after the grace period) and `OOMKilled` (memory limit) in `state.terminated.reason` on v1.37; also whether `lastState.terminated` carries a `signal` field |
+| 5 | 2.11 | `kubectl delete --grace-period=0` without `--force` is rejected or converted (local kubectl 1.37.1 help says "Can only be set to 0 when --force is true"; the runtime behaviour was not run). `--now` equals `--grace-period=1` (also from local help only) |
+| 6 | 2.11, 4.2 | Exact error text of `terminationGracePeriodSeconds: -1` (the lesson says it is not valid, text is a placeholder) and that exactly 0 is accepted; whether `lifecycle.preStop.sleep.seconds` is GA in v1.37 (the lifecycle hooks page lists Sleep as a handler; `k explain` on a v1.37 cluster confirms the field) |
+| 7 | 2.11 | The docs mark `lifecycle.stopSignal` as alpha since v1.33 and disabled by default (read from the Pod lifecycle page); status in v1.37 not checked on a cluster |
+| 8 | 5.4 | `crictl ps`, `crictl inspect -o go-template --template '{{.info.pid}}'`, `/proc/<pid>/status` with `NSpid`, the `kubepods` cgroup path, `nsenter -t <pid> -n ip -br a` and `nsenter -t <pid> -m -p ps` on a kind node; that SIGTERM from the node is ignored and SIGKILL gives 137 and a restart |
+| 9 | 5.4 | `pgrep -a kubelet` and `ss -ltnp \| grep 6443` on the kind control plane (whether `lsof` exists on kind nodes was not checked) |
+| 10 | 6, Lab 3 | `k delete --force --grace-period=0` on a Pod with a finalizer leaves the object (so the warning text and the `Terminating` status stay); `k patch ... finalizers null` removes it; `k delete pod --grace-period=1` shortens a 600 s wait; the exact warning text `Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.` |
+| 11 | 6 | Text of `k describe` for exit 127 and 126 (reason `Error`) and of `k logs` for a shell-reported `not found` (busybox wording not captured) |
+| 12 | Labs 2 and 3 | Never run end to end on a cluster. Lab 1 (the signal and port parts) was run in an Ubuntu 24.04 Docker container with `nc` and `ss`; the `lsof` branch of its solution was not run. The Docker run is not a VM result |
+| 13 | 2.5 | "The JVM exits with 143 on SIGTERM" is general knowledge, not tested here |
+| 14 | 2.6 | Interactive Ctrl+Z, `bg` and `fg` need a terminal and were not captured; `jobs -l` and `kill %2` were (with `set -m`) |
+| 15 | 2.3 | `top` keys other than `-b -n1 -o %MEM` (interactive `P M N T 1 c k`) were not exercised; `ps -o wchan:20` in section 6 was not run |
+| 16 | 4.3, 5.3 | Drills 4 to 7 were not run on a cluster. The `awk` insert line was run on a YAML stub (macOS awk), the `k run ... $do` output of kubectl 1.37.1 was not (no API server reachable), so confirm `spec:` is at column 0 in it |
+| 18 | 4.2 | Pods `hook-sleep` and `hook-http` were never applied. Confirm: the `sleep.seconds` hook delays SIGTERM by 3 s (`time k delete pod hook-sleep` is 3 to 4 s), `hook-http` logs `GET /`, and an error status or a wrong port from `httpGet` raises `FailedPreStopHook` while the shutdown continues |
+| 19 | 5.3, 6.1 | Delete times of `grace-demo` (about 5 s) and `share-demo` (about 2 to 3 s). The `SigCgt` bit-14 one-liner of 6.1 was run in a busybox container (prints `1` for a trapped shell and `0` for a process without handler), but not through `k exec` |
+| 20 | Lab 3 | `ns.uid` check (the namespace UID is unchanged); and that `--grace-period=1` on a Pod already `Terminating` with a 600 s budget shortens it (see also row 10) |
+| 17 | 2.4 | In busybox `sh`, a `trap` ran at once while a foreground `sleep` was running (Docker test), but in bash it was deferred until the `sleep` ended (Docker test: the trap printed after 3 s). Behaviour of other shells was not tested |
+| 21 | 2.11 | Claim that bash and dash exec a lone `-c` command (so `sh -c "sleep 1000"` often has `sleep` as PID 1) is general shell behaviour, not tested here; check with `ps` in the container |
+
+Exam facts used in this lesson (all from the research summary, with URLs): 2 hours and 15-20 tasks ([tips](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad), [FAQ](https://docs.linuxfoundation.org/tc-docs/certification/faq-cka-ckad-cks)); tools on SSH hosts are kubectl, yq, curl, wget and man ([tips](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad)); `ssh <node>` and `sudo -i` ([tips](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad)). Whether `ps`, `ss`, `lsof` or `crictl` exist on exam hosts is UNVERIFIED.
+
 ### T1.06 (T1.06-systemd-and-journalctl.md) — 16 expected-output blocks
 **Known limitation.** This lesson was written on a machine with no kind, no multipass and no kubeadm VMs. Two "done" criteria therefore cannot be met yet: (1) "includes a real `systemctl cat kubelet` from a v1.37 kubeadm node" and (2) "shows real journalctl output for at least 2 kubelet failure modes". What was done instead: the same commands and the same systemd behaviour were run for real in a privileged Docker container running systemd 255 on Ubuntu 24.04 (cgroup v2), and all of those blocks are labelled `REAL OUTPUT (Docker, ...)`. That Docker output is a plain Linux result, not a VM and not a Kubernetes node. To meet the criteria, a writer or reviewer needs the 3-VM kubeadm environment (`cp1`, `w1`, `w2`, with kubeadm/kubelet from `pkgs.k8s.io/core:/stable:/v1.37/deb`) and must replace the blocks below.
+
+Items to capture on a live v1.37 node:
+
 1. Section 2.8, main unit: real `/usr/lib/systemd/system/kubelet.service` text (exact `Restart=`, `RestartSec=`, `StartLimitInterval=` lines).
 2. Section 2.8: real drop-in path and text for the v1.37 deb package (`systemctl cat kubelet`). The kubeadm docs say `/usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf`; the entry's `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf` may be an older location. Confirm the example text on the docs page matches the package.
 3. Section 2.8 and 2.10: how the CRI socket and `/var/lib/kubelet/instance-config.yaml` reach the kubelet in 1.37 (flag, `--config-dir`, or drop-in), and whether `kubeadm-flags.env` still contains `--container-runtime-endpoint`. Also what `/etc/default/kubelet` contains by default (usually absent).
@@ -87,12 +148,17 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 16. Section 7.1: the `$GREETING` expansion inside `bash -c '...'` (systemd leaves `$GREETING` inside a quoted word for bash to expand) and the `beat hello` journal line were not run for real; the drop-in environment merge itself was (section 2.6).
 17. Persistence sequence in section 2.12 (`systemd-tmpfiles`, restart journald, `--list-boots` after reboot) was not run through a reboot in Docker. Verify on the linux-vm with a real reboot.
 18. Ubuntu LTS release number for the lab VMs: UNVERIFIED (summary §5); use 24.04 or newer.
----
 
 ### T1.07 (T1.07-linux-networking-i-interfaces-ips-routes.md) — 9 expected-output blocks
 **Known limitation.** This machine has no kind cluster running for me (the kind lock was held by another job for the full 20-minute wait) and no multipass. The done criterion "includes real `ip` output from a kind or kubeadm node" is therefore **not met**. To meet it you need a 3-node kind cluster (`env/kind-up.sh`, Calico v3.33.0) or 3 kubeadm VMs, and a re-run of section 5, section 7.1 and the lab 7.1 solution output. Real output that I did capture, from plain `ubuntu:24.04` Docker containers (labelled `REAL OUTPUT (Docker)`, never a VM or kind result), covers the commands `ip -br a`, `ip -br link`, `ip route`, `ip route get`, `ip neigh`, `bridge link`, `bridge fdb`, `ip -d link`, veth and VXLAN device creation, forwarding and `sysctl --system` ordering, MTU and DF pings, IPv6 addresses, and the error texts in section 6.
+
+Blocks labelled `EXPECTED OUTPUT (not captured)`:
+
 - Section 5, steps 1 to 5 (kind + Calico node and Pod output, cross-node route, forwarding experiment).
 - Section 7.1 solution output (`pod-veth.txt`).
+
+Items I could not confirm on a live v1.37 cluster:
+
 1. **Interface names created by Calico v3.33.0 on a node** (`cali<hash>`, `tunl0`, no `vxlan.calico` in the default manifest). I verified only the manifest: `CALICO_IPV4POOL_IPIP=Always`, `CALICO_IPV4POOL_VXLAN=Never`, `calico_backend: bird`, `veth_mtu: "0"` (auto-detect). I did not see the interfaces on a running node. Also unconfirmed: the Pod's default route via `169.254.1.1`, proxy ARP on the `cali` interfaces, the `/32` Pod address, the `proto bird` and `blackhole` routes, and the auto-detected Pod MTU (1480 expected with IP-in-IP on a 1500 underlay), and Calico's default per-node block size of `/26` (from Calico documentation, not seen).
 2. **kubeadm 1.37 preflight and `bridge-nf-call-iptables`.** I read `cmd/kubeadm/app/preflight/checks.go` and `checks_linux.go` at v1.37.0, v1.37.1 and v1.30.0 to v1.36.0: no check on `bridge-nf-call-iptables`; the checks present are `ip_forward` (IPv4) and `net/ipv6/conf/default/forwarding` (IPv6). v1.28.0 and v1.29.0 contained the bridge check. I did not run `kubeadm init`. The exact preflight error strings in section 6 are built from the source's message format, not copied from a run.
 3. **`sysctl -w net.ipv4.ip_forward=0` inside a kind node and its effect on IP-in-IP traffic** (section 5, step 5): not run.
@@ -108,6 +174,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.08 (T1.08-linux-networking-ii-dns-ports-sockets.md) — 22 expected-output blocks
 **Known limitation.** This lesson was written on a machine with Docker but without kind or multipass. The done criteria "includes real dig and curl output for success and for each failure type" is met only for plain Linux tools (REAL OUTPUT (Docker): curl exit codes 6, 7 and 28, `dig` NXDOMAIN, `nc`, `wget`, `ss`, `netstat`, `tcpdump`, `tracepath`, busybox quirks), not for cluster commands. "Has a port-to-component table verified on a v1.37 node" is **not met**: the table in section 2.12 comes from the kubernetes.io ports page plus my knowledge of kubeadm manifests. To meet both, run the labs and the worked example once on a 3-node kind cluster (`kind v0.33.0`, `kindest/node:v1.37.0`) and 3 kubeadm VMs, and replace each EXPECTED block with real output.
+
+Items not confirmed on a live v1.37 cluster:
+
 1. The kube-dns ClusterIP `10.96.0.10` (and API Service IP `10.96.0.1`) on kind and kubeadm. Service CIDR defaults differ between tools; the code assumes the first usable address plus 9.
 2. Every output block labelled EXPECTED OUTPUT (not captured): section 2.14 (resolv.conf of the four Pods), section 4 (probe output, drill answers), section 5 (steps 2-8), section 6 (out-of-range nodePort error text), Lab A (`ss -ltnp` rows), Lab B, Lab C (diagnosis output and the immutable-field error message).
 3. The `ss -ltnp` listening rows for a v1.37 kubeadm node: bind addresses (`127.0.0.1` for 10257/10259, 2379 on loopback and the node IP) and the comm names (`kube-controller` truncation).
@@ -120,16 +189,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 10. Image tags: `busybox:1.36` (v1.36.1, ran in Docker), `curlimages/curl:8.23.0` (ran in Docker; Docker Hub listed 8.23.0 as one of the newest tags on 2026-10-27), `registry.k8s.io/e2e-test-images/agnhost:2.53` (has `dig`, `nslookup`, `curl`, `wget`, `nc`, `ss`; entrypoint `/agnhost`), `nicolaka/netshoot:v0.13` (pulled, has `dig`, `curl`, `ss`). None was run inside a v1.37 cluster.
 11. Whether `ss`, `dig`, `nc` are present on the exam hosts (summary E9 lists only kubectl, yq, curl, wget, man): UNVERIFIED.
 12. glibc behaviour in the captures came from Ubuntu 24.04 containers (curl 8.5.0, dig 9.18). Alpine/musl-based images may order or retry search domains differently. The `dbg` Pod (agnhost 2.53) is Alpine/musl, so its `getent hosts` name column differs from the glibc captures (checked locally for `localhost` and an `/etc/hosts` entry only); the lesson therefore asserts the IP and exit code, not the name text, for `getent` on `dbg`. Whether the exam cluster can pull the agnhost image is UNVERIFIED.
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [ ] Every "Done criteria" item from the entry is met: [x] real dig/curl output for success and each failure type (plain Linux, Docker only; cluster blocks expected), [ ] port-to-component table verified on a v1.37 node (not possible here, see Known limitation), [x] every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+Self-check:
 
 ### T1.09 (T1.09-packet-filtering-iptables-and-nftables-basics.md) — 4 expected-output blocks
 **Known limitation.** This machine had no VMs, so the Easy lab was not run on a real Ubuntu VM (Docker was used for plain Linux commands), no kubeadm v1.37 cluster was available, and no host firewall (ufw, firewalld) could be tested. The criterion "real iptables-save and nft output for the same Service" **is met**: the same Service `web` (ClusterIP `10.96.127.115`, the same three Pod IPs) was captured in both modes on a real kind v0.33.0 cluster running Kubernetes v1.37.0. To close the remaining items you need three kubeadm VMs (`cp1`, `w1`, `w2`) with Calico, and one Ubuntu 24.04 VM.
+
+Items not confirmed:
+
 1. **Default kube-proxy mode on kubeadm v1.37.** The docs say the built-in default is iptables ("In Kubernetes 1.37, this is iptables") and kube-proxy `--help` says `iptables (default)`. On kind the ConfigMap has `mode: iptables` written explicitly (verified). The value kubeadm writes into the ConfigMap (blank or explicit) is not captured. Labs 2 and 3 are written to work with either form (`mode: iptables` or `mode: ""`), but that was only run on kind (explicit form). Check on a kubeadm VM: `k -n kube-system get cm kube-proxy -o jsonpath='{.data.config\.conf}' | grep mode`.
 2. **Calico lab cluster.** All kind captures used the default `kindnet` CNI, not Calico (the conventions cluster). The `KUBE-*` chains and the `kube-proxy` nft table come from kube-proxy and should be identical; Pod IPs (`192.168.x.x`) and the `clusterCIDR`-based match (`! -s 10.244.0.0/16`) differ. Re-run the worked example on the Calico cluster. **The nftables switch (section 5 step 6, Lab 2) was never tried with Calico.** Calico's iptables dataplane may or may not coexist with kube-proxy in nftables mode; this was not checked. If Pod traffic breaks after the switch, restore `mode: iptables` and continue with the iptables-only steps.
 3. **Chain and table names on a kubeadm VM with a different kernel.** nftables-mode names (`service-<hash>-ns/name/tcp/port`, `service-ips`, `services`, `masquerading`) were captured on v1.37.0 with kindnet only. kube-proxy names are an implementation detail.
@@ -152,6 +219,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.10 (T1.10-linux-namespaces-and-cgroups-v2.md) — 1 expected-output blocks
 **Known limitation.** This lesson's cluster output comes from one kind v0.33.0 cluster (2 nodes, kindnet CNI, OrbStack kernel), not from the conventions cluster (3 nodes, Calico) and not from a kubeadm node or an Ubuntu 24.04 VM. The unmet criteria are: real cgroup output on a **kubeadm** node (path layout without the `kubelet-` prefix), a run of lab 7.1 on an **Ubuntu linux-vm with `sudo`**, and a reproduction of the kubelet failure on a **real cgroup v1 node**. To meet them you need one kubeadm VM (Part 4 topology) and one Ubuntu 24.04 VM.
+
+What was captured on a real v1.37.0 cluster: kind v0.33.0 with `kindest/node:v1.37.0` (containerd 2.3.4, runc 1.4.3, cgroup v2, systemd driver), Pods in all three QoS classes, cgroup files at container, Pod and QoS-slice level, `systemd-cgls`, `systemd-cgtop`, `lsns`, `nsenter`, `unshare`, the kernel OOM log, `memory.events`, CPU throttling, the cgroup-by-hand demo, in-place resize, `hostUsers: false`, `shareProcessNamespace`, `hostPID`, and `/configz` of the kubelet. Still open:
+
 1. **kubeadm node path layout** (no `kubelet.slice` prefix, `kubepods.slice/...` at the top). The kind layout is captured; the kubeadm layout is stated from the systemd-driver rules and the cgroups blog's `tree ... /sys/fs/cgroup/kubepods.slice` command. Run section 5 on a kubeadm VM (T4.x) and compare.
 2. **Ubuntu linux-vm run of lab 7.1.** Part A and the cgroup-by-hand steps were run as root inside a kind node container on an OrbStack Linux kernel, not on an Ubuntu 24.04 VM with `sudo`. In particular `sudo -i` changing `~` to `/root` in the part B solution, swap behaviour with the VM's real swap setting, and whether the VM's root cgroup has `cpuset cpu io memory pids` in `cgroup.subtree_control` (it did on the captured node).
 3. **Failure on a real cgroup v1 node.** The kubelet refusal was not reproduced (kind nodes are on cgroup v2). The message text in section 6.3 comes from the strings of the v1.37.0 kubelet binary, and `failCgroupV1: true` from the live `/configz`.
@@ -167,6 +237,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.11 (T1.11-containers-images-registries-and-runtimes-oci.md) — 7 expected-output blocks
 **Known limitation.** The "real output" done criteria are met for the **kind** parts: every `REAL OUTPUT (kind v0.33.0, v1.37.0)` block was captured on a real 3-node kind v0.33.0 cluster with `kindest/node:v1.37.0` (containerd 2.3.4, runc 1.4.3, crictl 1.36.0). What is **not** met: nothing was run on a kubeadm 1.37 VM or an Ubuntu 24.04 linux-vm, the cluster used kindnet instead of Calico, and the node's `crictl` is 1.36.0, not the pinned v1.37.0. The lab commands use the names `lab`, `lab-worker` and `lab-worker2`. I ran every step of every lab (and every drill except the ones listed below) on a cluster named `k-t111` with the node names substituted; I did not run the scripts verbatim with the `lab-*` names. To meet the unmet criteria, run this lesson once on the 3-VM environment (`cp1`, `w1`, `w2` with `env/vm-prereqs.sh`) and on the `lab` kind cluster, with `crictl` v1.37.0.
+
+Items to confirm on a live cluster:
+
 1. **crictl v1.37.0 flags and subcommands.** All crictl output is from 1.36.0. Re-check the flag list in section 2.6 (`--no-trunc`, `--creds`, `-o go-template`, `runtime-config`, `config --list`) on v1.37.0.
 2. **containerd config version.** containerd 2.3.4 generates `version = 4`. The topic entry says "2.x config version 3". Confirm which version 2.0 to 2.2 generate and which version the VM containerd (research summary pin: 2.4.2) generates.
 3. **Old keys in a new-version file.** I tested the 1.x `sandbox_image` and `registry` table names only inside a `version = 2` file (migrated). Whether `sandbox_image` under a `version = 3/4` header is honoured, or ignored with the default `pause:3.10.2` used, is not confirmed. The `config_path` key in the new schema (`[plugins.'io.containerd.cri.v1.images'.registry]`) is shown from the generated default, and the runnable snippet and check in section 2.8 for a `version = 3/4` file were **not run** (config example, not run; the expected `config_path` line is EXPECTED OUTPUT (not captured)). A `hosts.toml` was only tested through the migrated old table on the `version = 2` kind file. To meet this, run the section 2.8 snippet on a node whose file starts with `version = 3` or `4` and confirm `containerd config dump | grep config_path` and a `crictl pull` that reaches the mirror.
@@ -187,17 +260,21 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 18. **"Same lab on a VM" boxes in section 7.** The VM variants of Labs A, B and C (ssh, `sudo -i`, `scp`, `sudo ctr`) were not run. All three labs were run on kind only.
 19. **RuntimeClass demo commands (section 2.11).** The captured output came from my run; the `k run ... --overrides` commands and the `nope` RuntimeClass YAML shown in section 2.11 are the equivalent commands written out for the lesson, and the `rc-demo`/`rc-bad` creation was not re-run from this exact text.
 20. **Pinned test images.** The lab and drill commands now use `registry:2.8.3` and `httpd:2.4.62` (both tags exist on Docker Hub; I checked with `docker manifest inspect`). My captured runs used `registry:2` and `httpd:2`. The `priv` Pod in section 5.2 now names the org `lab-nonexistent-org`; the captured text was from an org name of mine that I replaced.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [x] Every "Done criteria" item from the entry is met
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+Blocks labelled `EXPECTED OUTPUT (not captured)` in this lesson: the Docker Hub rate-limit row (section 6) and the `config_path` check after the containerd 2.x change (section 2.8). Config samples labelled "Config example, not run": the containerd 2.x `config_path` table and the Docker Hub mirror `hosts.toml` (both section 2.8).
+
+Changelog: first version; fix round 1 (see the review file).
+
+
+Self-check:
 
 ### T1.12 (T1.12-tls-pki-and-openssl-for-kubernetes.md) — 9 expected-output blocks
 **Known limitation.** This machine has no Multipass, so no VM was available. The Done criterion "real `openssl x509 -text` output of a kubeadm apiserver certificate" is met (Docker with kubeadm v1.37.1 `init phase certs`, and a kind v0.33.0 / v1.37.0 control-plane node). The CSR flow criterion is met on kind with a working kubeconfig. What was not met is "run on a VM": the easy lab was run in an Ubuntu 24.04 container (plain Linux commands), and the break-fix lab was run on the kind control-plane node container, not on `cp1`. To meet it, repeat labs 1 and 3 on one Ubuntu LTS VM and one kubeadm control-plane VM (3 VMs for the full CKA environment).
+
+Checked on a live cluster or kubeadm binary in this session (no action needed): default lifetimes (leaf 1 year, CA 10 years), RSA 2048, 5-minute backdating, the `kubeadm certs check-expiration` output, the `kubeadm certs renew` messages and SAN behaviour, the three CAs and every file under `/etc/kubernetes/pki`, CSR admission errors, `Approved,Failed`, `auth whoami`, `ClusterTrustBundle` and `PodCertificateRequest` served as `certificates.k8s.io/v1`.
+
+Still to confirm on a real VM or by reading the source:
+
 - EXPECTED OUTPUT (not captured): the exact `x509: certificate is valid for 10.96.0.1, not <node IP>` text (IP SANs only) when the kubeconfig `server:` is an IP address, as on `cp1` after `kubeadm certs renew apiserver`. The lesson captured only the host-name form (DNS SANs) on kind. The IP-form rule comes from how Go formats a host-name error for an IP host, not from a run here.
 - EXPECTED OUTPUT (not captured): worked example step 9 (the wrong-CA error, the `issuer` and `subject` lines, and the fixed `get pods`). The error text in section 6 is the one from the entry.
 - EXPECTED OUTPUT (not captured): Lab 2 `PASS-window-7500s`. The 7500 s window (7200 s request + 5 min backdating) is derived from the 3900 s window captured for a 3600 s request.
@@ -214,6 +291,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.13 (T1.13-yaml-and-json-with-jq-yq.md) — 2 expected-output blocks
 **Known limitation.** The sandbox has no Ubuntu VM or multipass. Everything that needs a Kubernetes cluster was captured on a real kind v0.33.0 cluster (`kindest/node:v1.37.0`, 1 control plane + 2 workers, kindnet instead of Calico) from a macOS laptop with `kubectl` v1.37.1, `jq` 1.8.2 and `yq` v4.54.1. The "kind cluster + yq v4.54.1 + jq 1.8.2" environment of the entry is therefore met, but not on the Ubuntu linux-vm and not with Calico. There are no `EXPECTED OUTPUT (not captured)` blocks in this lesson. To meet the strict Ubuntu criterion, rerun the labs on the `lab` cluster created by `env/kind-up.sh` from an Ubuntu 24.04 VM and compare.
+
+Items still to confirm:
+
 1. **yq version on the exam hosts: UNVERIFIED.** The tips page lists `yq` but gives no version ([tips page](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad)). Run `yq --version` in the first minute of the exam. The syntax in this lesson is yq v4 (tested with v4.54.1), including `-i`, `e`/`eval`, `ea`/`eval-all`, `-N`, `-o json`, `select`, `documentIndex`, `del`, `style="double"` and `tag`.
 2. **Exam alias name: UNVERIFIED.** The tips page says "kubectl with kalias and Bash autocompletion"; whether the alias is `k` is not stated.
 3. **`jq` on the exam hosts:** not listed on the tips page, so treat it as absent. Not confirmed either way.
@@ -228,6 +308,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T1.14 (T1.14-ssh-and-remote-work-across-nodes.md) — 14 expected-output blocks
 **Known limitation.** Kind and Multipass are not installed on the machine that produced this lesson. The Done criterion "Lab sets up all 3 VMs reproducibly" is met on paper (the Lab 1 setup block is complete and copy-paste ready) but was not executed. Every output block labelled `EXPECTED OUTPUT (not captured)` needs three real VMs (Multipass or KVM, Ubuntu 24.04) to confirm. Plain OpenSSH behaviour was captured in a single Ubuntu 24.04 Docker container (OpenSSH_9.6p1) and is labelled `REAL OUTPUT (Docker)`; it is not a VM result.
+
+Not captured, needs three VMs:
+
 - Section 5 steps 1 to 6 (hostnames, `sudo -i` on a VM, kubelet status text, `scp` permission error text, `kubectl get nodes`, NodePort through `-L`); the `ssh cp1 'sudo cat /etc/kubernetes/admin.conf' > admin.conf` pattern in 2.5 (needs a kubeadm control plane).
 - Whether `PATH` differs between `ubuntu` and root on the VMs: the 2.7 Docker capture shows only `/usr/games` and `/usr/local/games` missing for root; compare on a real node.
 - Lab 1: `multipass launch 24.04 ...` flags on Multipass v1.17.0; the `multipass list --format json` shape (`.list[].name`, `.ipv4[0]`) used by the `jq` line; that the `ubuntu` user's `~/.ssh` exists with mode 700 before the key is appended; four `PASS` lines; the optional `ssh-copy-id` message; the `multipass transfer` round trip.
@@ -237,6 +320,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - Section 6 rows 6 to 8: exact texts `Could not resolve hostname w1: Name or service not known`, `Too many authentication failures`, and the `scp` permission error (varies by OpenSSH version).
 - `rsync` is present on stock Ubuntu cloud images (assumed).
 - Whether `scp` with `-3` is needed on the OpenSSH version in the VMs: `-3` is always accepted, so it is used for safety.
+
+Version-dependent claims:
+
 - Whether NodePort answers on the node's `localhost` for the kube-proxy mode used on v1.37 (default iptables; nftables behaviour for localhost NodePorts is UNVERIFIED). Fallback in 2.8: forward to the node IP.
 - Exam host naming: only the general pattern is verified (infobox gives `ssh <nodename>`, you exit back to `base`, E7). Node names in the exam (like `cp1`, `w1`) are UNVERIFIED and are lab names only.
 - Whether root's shell on the exam hosts has the `k` alias or a kubeconfig after `sudo -i`: UNVERIFIED (E9 says "kalias"; exact name UNVERIFIED).
@@ -244,19 +330,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - Exam OS and distro of exam hosts: UNVERIFIED (E22).
 - Statement that Ubuntu's `~/.bashrc` returns early in non-interactive shells (so aliases are not loaded in one-off commands) is standard Ubuntu behaviour but was not re-checked in this session; the `ssh host 'cmd'` examples avoid depending on it by using `kubectl`.
 - The page `https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/adding-linux-nodes/` was seen only as a link on the kubeadm page; its content was not fetched. The command `kubeadm token create --print-join-command` is not on the kubeadm create-cluster page (the fetch showed only a pointer to `kubeadm token`), so check the kubeadm token reference before relying on it in an exam-style task.
+
 **Self-check**
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images (no Kubernetes YAML in this topic; the config file is SSH config)
-- [x] Done criteria: includes a working ~/.ssh/config sample (2.4, 4.2, Lab 1)
-- [x] Done criteria: lab sets up all 3 VMs reproducibly (Lab 1 setup; not executed, see section 11)
-- [x] Done criteria: every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real (Docker, labelled) or labelled "EXPECTED OUTPUT (not captured)"
 
 ### T1.15 (T1.15-packages-kernel-modules-sysctl-swap-and.md) — 12 expected-output blocks
 **Known limitation.** This machine has no VM (multipass) and no kind cluster, so these "done" criteria could not be met in full: "the node-prep script runs clean on a fresh VM" and any real output from a VM or a cluster. What was run instead: the apt, repo, key, hold, `madison`, `policy`, upgrade, downgrade and glob parts, and the log/truncate/fallocate logic, in an `ubuntu:24.04` container (arm64) with network access; `kubelet` and `kubeadm` v1.37.1 from `pkgs.k8s.io` were executed there for the swap defaults and preflight message. To meet the remaining criteria you need one Ubuntu 24.04+ VM (or three, for the cluster parts), then run `~/lab/t115/node-prep.sh`, reboot, and run the Easy-lab verification block.
+
+Items still open:
+
 1. **Node-prep script on a real VM.** Modules, sysctl, swap and `systemctl enable --now kubelet` lines are EXPECTED. Check that `sysctl --system` prints `* Applying /etc/sysctl.d/k8s.conf ...` and that values survive a reboot.
 2. **All EXPECTED OUTPUT blocks** in sections 2.7 (sysctl error; preflight ip_forward line), 2.9 (loop device `findmnt`), 2.10 (journal outputs), 2.11 (`timedatectl`), 5 steps 1 to 3 and 7, 6.2 (node conditions and eviction events), 6.3 (kubelet journal line), 6.4 (bridge sysctl error) and 7 (all lab verification outputs).
 3. **Exact `kubelet` journal line for swap.** The sentence `running with swap on is not supported, please disable swap or set --fail-swap-on flag to false` is in the v1.37.1 binary. The `"command failed" err="failed to run Kubelet: ..."` wrapper is inferred from a different startup failure captured in the same binary.
@@ -276,6 +357,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T2.01 (T2.01-kubernetes-architecture-and-the-api-model.md) — 0 expected-output blocks
 **Known limitation.** The course environment is a 3-node kind cluster with Calico (`env/kind.yaml`). I captured the outputs in this lesson on a real 3-node kind v0.33.0 cluster running `kindest/node:v1.37.0` (digest pinned), but with kind's default CNI (kindnet) instead of Calico, and with node names `k-t201-*`. So every output is real, but it is not byte-for-byte what a `lab` cluster with Calico will print. To close the gap, rerun the lab commands on the real `lab` cluster, and run the VM-only parts (static Pod directory on a kubeadm node, `systemctl status kubelet`) on three kubeadm VMs. After the review I changed the Lab 3 `break.sh` (it now waits until the scheduler container is gone, using `crictl ps --name kube-scheduler -q`, instead of a fixed `sleep 15`) and checked only its bash syntax and that the encoded text decodes to the script; the new wait loop was not run on a live cluster. I did not run Lab 1 and Lab 3 verification blocks themselves; I ran the underlying commands (the same selectors, the manifest move and restore, and the pod-state checks) and checked the output shape, and I ran the Lab 2 trace commands and the `jsonpath` queries.
+
+Items I could not confirm on a live v1.37 cluster or did not capture:
+
 - Version skew table (2.14): re-checked against https://kubernetes.io/releases/version-skew-policy/ on 2026-10-27, all rows. Nothing left to verify except that the page may change after the 1.37 line.
 - The default admission plugin list in v1.37 (only `--enable-admission-plugins=NodeRestriction` was seen on the kube-apiserver manifest). Confirm with `kube-apiserver -h` on a node. The plugin names I gave as examples are default plugins in my knowledge, not checked.
 - Calico-specific output: with Calico, `k get pods -n kube-system` lists `calico-node-*` and `calico-kube-controllers-*` instead of `kindnet-*`. Not captured.
@@ -290,6 +374,8 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - Exam facts: only the tool list and allowed docs (E9, E13) are used, with source URLs; the exact alias name on the exam host is UNVERIFIED.
 
 ### T2.02 (T2.02-kubectl-fluency-and-productivity.md) — 9 expected-output blocks
+Known limitation. Most output in this lesson was captured on real kind clusters (kind v0.33.0, kindest/node v1.37.0 pinned by digest, kubectl client v1.37.1), so the "real output" criteria are mostly met. The gaps below are the items not captured or captured under different conditions. To close them, run the lesson on the standard 3-node `lab` cluster created by `env/kind-up.sh` (Calico CNI, metrics-server add-on) with a real terminal.
+
 - Captured on a scratch 3-node cluster named `k-t202` with the default kindnet CNI, not Calico, and a second 1-node cluster `k-t202b`. Node names and the kubeconfig cluster entry therefore differ from a `lab` cluster. Contexts `kind-lab`, `kind-a`, `kind-b` were produced with `k config rename-context` / `set-context` instead of `kind create cluster --name a/b`.
 - Medium lab: executed against those hand-made contexts (`kind-a` pointed at the 3-node cluster, `kind-b` at the 1-node cluster; `ops` used the cluster/user name `kind-k-t202`). The command output of `kind create cluster --name a` and `--name b` is EXPECTED OUTPUT (not captured). Confirm the user and cluster names of `kind-a` are `kind-a` on a fresh pair of clusters.
 - `k run tmp --image=busybox:1.36 --rm -it --restart=Never -- sh` with a real TTY: EXPECTED OUTPUT (not captured). The capture had no terminal.
@@ -305,8 +391,20 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - `curlimages/curl` was not used; the labs probe with `busybox:1.36` `wget`.
 - The `describe` Events wording (`spec.containers{web}: Pulling image ...`) and the `kubectl run -f` deprecation text are from the v1.37.1 client and v1.37.0 server; they may change in 1.37.x.
 
+Self-check:
+[x] Every subtopic bullet from the entry appears in section 2 or 4
+[x] Every "Common mistake" from the entry appears in section 6
+[x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
+[x] All YAML is complete and valid for v1.37; no :latest images
+[x] Every "Done criteria" item from the entry is met (1-page cheat sheet in 4.3 from real help output; speed drill with target times in 4.4 and 7.1; every lab has setup, task, hints, collapsed solution, verification command and cleanup)
+[x] No exam fact without a source URL; unknowns marked UNVERIFIED
+[x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
 ### T2.03 (T2.03-pods-in-depth.md) — 2 expected-output blocks
 **Known limitation.** Almost every output block in this lesson is real (`REAL OUTPUT (kind v0.33.0, v1.37.0)`), captured on a scratch 3-node kind cluster (kindest/node v1.37.0, kubectl v1.37.1, containerd 2.3.4) and, for the ENTRYPOINT/CMD half of section 5, from plain Docker. It differs from the course `lab` cluster in three ways: the cluster was named `k-t203`, it used the default kindnet CNI instead of Calico (Pod networking and NetworkPolicy are not exercised in this lesson), and it ran on an arm64 Mac with Docker provided by OrbStack, so node IPs (`192.168.147.x`), the node resolver (`0.250.250.254`) and the kernel version are specific to that machine. No block is labelled `EXPECTED OUTPUT (not captured)`; the label is defined at the top only for completeness. The checks that need real VMs rather than kind (editing `/etc/kubernetes/manifests` on a kubeadm node) are previews here and belong to T4.13. The Done criteria are met: real `describe` output for `CrashLoopBackOff` (section 5, Step 3) and `ErrImagePull` (Step 4), the command/args versus ENTRYPOINT/CMD table with Docker and Pod outputs (section 2.3 and Step 2), and a setup, task, hints, collapsed solution, verification and cleanup in every lab.
+
+Version-dependent facts that the entry asked to verify, and their status:
+
 1. **Mutable Pod fields in v1.37.** Verified by `k patch` on v1.37.0 (section 2.16): `image`, `activeDeadlineSeconds` (set or lower only), added `tolerations`, labels and annotations are accepted; `command`, `env`, `ports`, `restartPolicy`, `nodeName`, `nodeSelector`, `terminationGracePeriodSeconds`, `resources` are rejected with the exact message shown. Not run: `k edit` on a forbidden field (the temp-file message text), and setting a negative `terminationGracePeriodSeconds` to 1.
 2. **Per-container `restartPolicy` and `restartPolicyRules`.** Verified: the fields exist (`k explain`), the metric `kubernetes_feature_enabled{name="ContainerRestartRules",stage="BETA"}` is `1`, and a Pod with exit code 42 plus an `In [42]` rule was restarted with both policies `Never`. Not run: `operator: NotIn`, multiple rules, a non-matching exit code ending in `Failed`, and rules on init/sidecar containers. The behaviour of a beta feature may change in later releases.
 3. **CrashLoopBackOff maximum backoff.** Verified on v1.37.0 with default kubelet settings: the delay grows from about 10 seconds and stops at 5 minutes (gaps of 317 s and 320 s; Pod message `back-off 5m0s`). Not measured: the reset after 10 minutes of healthy running (taken from the Kubernetes documentation), and lowering the cap with `KubeletCrashLoopBackOffMax` (beta, on). The exact jitter and the "first restart in 1 second" behaviour came from one cluster; other runs gave first gaps of 1, 15 and 25 seconds.
@@ -324,8 +422,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T2.04 (T2.04-labels-selectors-annotations-and-namespaces.md) — 15 expected-output blocks
 **Known limitation.** This lesson could not capture real kind output. Another writer held the machine-wide kind lock (`/tmp/kind-lab.lock`) for the whole 20-minute wait, so by the conventions I did not create a cluster. The criterion "includes real output for set-based selector queries" is therefore only **partly met**: section 2.2 has real output of the Kubernetes selector parser (Go, apimachinery v0.37.0) for all eight Lab 7.1 queries, but the `kubectl get` output in sections 4.1 and 5 is `EXPECTED OUTPUT (not captured)`. To meet it fully, a reviewer needs a 3-node kind cluster (`kind v0.33.0`, `kindest/node:v1.37.0`) and has to run section 5 and replace each expected block with real output. Reviewers do not raise this limitation as a major on its own (conventions section 10).
+
+What I did verify, without a cluster:
+
 - Label key and value rules, the `--overwrite` message, the immutable selector validation, the "selector does not match template labels" message, `k expose` behavior for `matchExpressions`, `set selector`, the annotation size limit, the pods-first namespace deletion logic, the namespace condition texts and the field-selector lists were read from the Kubernetes source at tag `v1.37.0` on GitHub.
 - The `yq` expression of Lab 7.2 was run with `yq v4.54.1` on a hand-made List shaped like `k get -o yaml` output (a synthetic input, not cluster output). It removed the intended fields and kept labels, selectors and the `owner` annotation.
+
+Items still to check on a live v1.37 cluster:
+
 1. Field selectors per resource in 1.37 (the entry's required check). Source says Pod has `status.podIP` but not `status.podIPs`, while the official page lists `status.podIPs`. Run `k get pods -A --field-selector status.podIPs=1.2.3.4` and `--field-selector status.podIP=<a real IP>` and confirm which one is accepted. Also confirm that a Deployment rejects `spec.replicas=3` and the exact error text.
 2. Every `EXPECTED OUTPUT (not captured)` block in sections 2.1, 2.4, 2.6, 4.1, 5 (steps 0 to 8) and Lab verification sentences.
 3. Exact error text of `k label pod web 'owner=my team'` (the API server text, shortened in section 2.1). The `k label` messages in section 2.4 (`already has a value ... --overwrite is false`, `label "x" not found.`, `labeled`, `unlabeled`, `modified`, `not labeled`) and the "same value is not an error" rule come from the kubectl v0.37.0 source; a live run should only confirm the printed `error: ` prefix and the `pod/web` prefix.
@@ -345,6 +449,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T2.05 (T2.05-controllers-replicasets-deployments-basics-and-garbage.md) — 0 expected-output blocks
 **Known limitation.** Real kind output was captured for this lesson (3-node kind v0.33.0 cluster, `kindest/node:v1.37.0`, one run on a cluster named `k-t205`), so the "real ownerReferences output", "real watch output" and "lab has verification" criteria are met. Two differences from the standard lab cluster remain. The capture cluster used kind's default CNI and the node image by tag, not the Calico setup and the digest pin in `env/kind.yaml`. The kubectl client was v1.37.1. A re-run on the standard `env/kind-up.sh` cluster would remove both differences.
+
+Items I could not confirm on a live v1.37 cluster, or only confirmed partly:
+
 1. `--cascade=foreground` request body `{"propagationPolicy":"Foreground"}`: taken from the docs page (use-cascading-deletion), not captured with `-v=8`. The Orphan and Background bodies were captured.
 2. Scale-down order (section 2.9): the order list is quoted from the ReplicaSet docs page. I observed one sample of "newer first" and one sample of `pod-deletion-cost`; I did not test the other rules (Pending first, Pods on nodes with more replicas).
 3. `Available=False` and `ReplicaFailure` condition reasons: not provoked. I only list the condition names (the docs name `ReplicaFailure`/`FailedCreate`); I did not give their messages.
@@ -352,12 +459,16 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 5. The Lab A verification commands and the Lab B step order were composed from the captured Lab runs (scale 2 to 4 to 1, orphan and recreate with `orders.yaml`). The Lab B Pod UID diff and the Lab C `verify.sh` (fails with `rc=1` before the fix, `PASS` after) were run exactly. The Lab A `test` lines were not run as one script. The Lab B ReplicaSet UID and Deployment UID checks (added after review) were traced by hand, not run.
 6. Section 2.13 (under the hood): the facts that the controllers run in `kube-controller-manager`, that Pods are created with `generateName`, and that the garbage collector builds a graph of owner references from the API, come from general Kubernetes architecture knowledge and the docs snippets, not from a live check. The `generateName: frontend-` snippet is from the ReplicaSet docs page.
 7. Field rules in the table of section 2.2 that I did not trigger on the cluster: negative `replicas` is rejected, an empty selector is rejected, `replicas: 0` is accepted and deletes all Pods. Only the three rejections shown with output (label mismatch, restartPolicy, immutable selector) were run.
+7b. A plain `k delete rs <name>` of a Deployment's ReplicaSet (not orphan): I expect the Deployment to create it again and new Pods to start, but only the `--cascade=orphan` case was run.
 8. The exact wording of `kubectl` and API server errors is from the v1.37.1 client and v1.37.0 server on this run.
 9. `Completed` as the status of a Pod stopped by `k delete` (nginx exits 0): observed; the reason (nginx exits with code 0 on the stop signal) is my explanation, not read from a log.
 10. Links to T3.02, T3.10 and T4.12 are plain text on purpose (not a lower wave or prerequisite). `../part2-basics/T2.02-...md` and `T2.04-...md` exist in the repo; T2.03 is not linked.
 
 ### T2.06 (T2.06-services-and-endpointslices-fundamentals.md) — 22 expected-output blocks
 **Known limitation.** kind and multipass are not installed on this machine, and another process held the machine-wide kind lock (`/tmp/kind-lab.lock`) for the whole time I was allowed to wait, so no output block in this lesson was captured from a live v1.37 cluster. The done criterion "real EndpointSlice YAML for a live Service" is therefore met only with an `EXPECTED OUTPUT (not captured)` listing. To meet it, run section 5 on a 3-node kind cluster (`kindest/node:v1.37.0`) and replace the blocks.
+
+Every block labelled `EXPECTED OUTPUT (not captured)` needs a run. Specific claims to confirm on a live v1.37.0 cluster:
+
 1. The exact Endpoints deprecation warning text in kubectl 1.37 (`Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice`, section 5 step 8 and section 6). The v1.37.0 source marks the `Endpoints` type "deprecated in v1.33+"; the full warning sentence is taken from the sibling lesson T3.12, not from a run.
 2. The label key `kubernetes.io/service-name` on slices (used in every command) and `endpointslice.kubernetes.io/managed-by: endpointslice-controller.k8s.io`.
 3. Whether `k expose` copies the Deployment's `metadata.labels` onto the Service (step 4 shows `Labels: <none>` because the lesson Deployment has no `metadata.labels`) and whether the controller copies any Service labels onto the slice.
@@ -382,6 +493,7 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T2.07 (T2.07-declarative-object-management-apply-diff-patch.md) — 4 expected-output blocks
 **Known limitation.** Almost everything in this lesson was captured on a real scratch kind cluster (kind v0.33.0, kindest/node v1.37.0, 1 control plane + 2 workers, kubectl client v1.37.1) or from `kubectl --local` without a cluster; all three labs, the speed drills and the worked example were executed there. The cluster used the default kindnet CNI, not Calico, which does not affect this topic. The unmet items are listed below. Meeting them needs a cluster with metrics-server (for a real HPA) and a Linux shell on an exam-like host. No VM topic is involved.
+
 - **Section 6.1 handover sequences (EXPECTED OUTPUT, not captured).** The CSA case (`k apply edit-last-applied`, then file, then apply; count stays 5, wrong order gives 1) and the SSA case use `k scale` as the autoscaler stand-in and were not run. Confirm on a kind cluster, including whether the last apply prints `configured` or `unchanged` and that `KUBE_EDITOR="yq -i ..."` works with `edit-last-applied`.
 - **`replace --force` on a Deployment (row 3 of section 6, EXPECTED OUTPUT, not captured).** Only the Pod form was captured. Run it on a Deployment and compare the two lines and the Pod restart.
 - **`apply -k` and `diff -k` (EXPECTED OUTPUT, not captured).** Only `k kustomize` and the two flag-combination errors were captured (client only). Needs a cluster to capture `k apply -k kdir/` and `k diff -k kdir/`.
@@ -395,18 +507,22 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - **yq flavour on exam hosts.** The labs use `yq -i '...'` expressions of mikefarah yq v4.54.1 (`yq --version` on the capture machine). The exam page says `yq` is installed but not which one: UNVERIFIED. Interactive `k edit` avoids the dependency.
 - **`KUBE_EDITOR="yq -i ..."` on Linux.** Verified on macOS with bash; kubectl runs the editor string through a shell, which should behave the same on Linux, but it was not run there.
 - **Pod error text.** The message `pod updates may not change fields other than ...` was captured on v1.37.0 and lists five allowed fields; newer minor versions may add more. After this error `k replace` printed about 100 lines of a debug diff, trimmed in the lesson.
-- **`kubectl-convert` install.** Only the "plugin is absent" error was captured (`unknown command "convert"`); installation of the plugin was not run. See [T3.21](../part3-ckad/T3.21-understand-api-depreciations.md).
+- **`kubectl-convert` install.** Only the "plugin is absent" error was captured (`unknown command "convert"`); installation of the plugin was not run. See [T3.21](part3-ckad/T3.21-understand-api-depreciations-api-deprecations-and.md).
 - **`--prune` is alpha** (stated in `k apply --help` on v1.37.1) and printed a deprecation warning about non-namespaced resources. Its allowlist and behaviour can change; the lesson teaches awareness only.
 - **Default field validation level in kubectl 1.37: verified.** `kubectl apply --help` shows `--validate='strict'` and an unknown field was rejected with no flag (section 5, step 9).
 
 ### T2.08 (T2.08-events-describe-and-reading-object-status.md) — 21 expected-output blocks
 **Known limitation.** This machine has no `kind` or `multipass`, and the shared kind lock `/tmp/kind-lab.lock` stayed held by other writers for my whole 20 minute wait, so I did not create a cluster. Two done criteria are therefore not met: "Includes real event output for all 4 failure types" (the four failure types are shown with expected output only) and "Decision tree verified against the labs" (traced on paper against each lab command, not run). To meet them, a 3-node kind cluster (kind v0.33.0, `kindest/node:v1.37.0`) is needed: run Lab A, copy the real `k events` and `describe` output into sections 2, 5 and 7, run the labs' verification blocks, and check the items below.
+
 **Real output captured** (not in this list; help texts only, no cluster was running): the `kubectl events --help` text and `kubectl wait --help` text (kubectl v1.37.0 from a `kindest/node:v1.37.0` container) and the `--event-ttl` default `1h0m0s` from the v1.37.0 `kube-apiserver --help` text. Whether a default kind or kubeadm manifest sets `--event-ttl` was NOT checked (item 14 below).
+
 **Expected-output blocks (all need a live run):**
+
 - Section 2.1: Event YAML. 2.2: `describe pod bad-probe` Containers and Conditions. 2.3: warnings custom-columns table. 2.7 (after the table): Deployment condition lines. 2.8: `wait` met and timeout lines. 2.9: node Conditions table; PVC events. 2.11: node events in `default`.
 - Section 5: steps 1 to 6 (Pods, normal events, rollout status, `get deploy,rs,pods`, Warning events, conditions, `-o` file contents, PVC/Job output).
 - Section 7: Lab A pods table, Lab C Deployment table.
 **Version-dependent or unconfirmed claims:**
+
 1. `k events` sorts oldest first by itself (stated from memory of the kubectl source; confirm on a run).
 2. `k events --for node/NAME` finding events stored in `default` (untested; the lesson uses `k describe node` and the `get` form instead).
 3. Field selectors for Events (`involvedObject.*`, `reason`, `type`, `reportingComponent`, `source`) are listed from memory of the API server's event strategy; confirm `involvedObject.kind` and `type!=Normal` on a run.
@@ -426,9 +542,15 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T2.09 (T2.09-local-practice-clusters-kind-and-minikube.md) — 9 expected-output blocks
 **Known limitation.** Most of this lesson was captured on a real kind v0.33.0 cluster with `kindest/node:v1.37.0` (Docker provider, OrbStack, macOS arm64). Not met: a clean end-to-end run of the updated `env/kind-up.sh` (600 s and 300 s waits) on a fresh machine, any minikube cluster run (the minikube blocks are `EXPECTED OUTPUT (not captured)`), the Podman provider, a native Linux Docker host (inotify limits, default `172.18.x` network), and Docker Desktop. To meet them, run `env/kind-up.sh` once on a cold image cache, run section 2.10 with `--nodes 3` on a machine with the RAM, repeat the Easy lab with `KIND_EXPERIMENTAL_PROVIDER=podman`, and repeat the Easy lab on a Linux host with a low inotify limit.
+
+Facts the entry asked me to verify: all three were confirmed.
+
 - kind v0.33.0 default node image digest: `kindest/node:v1.37.0@sha256:a1ed56cf...580ae5` is compiled into the v0.33.0 binary, and a cluster built from it reported `v1.37.0`. VERIFIED.
 - metrics-server flags on kind: only `--kubelet-insecure-tls` was needed on top of the manifest's own flags. The failure without it (`x509: cannot validate certificate ... doesn't contain any IP SANs`) and the success with it were both captured. VERIFIED.
 - Calico manifest URL for v3.33.0: `https://raw.githubusercontent.com/projectcalico/calico/v3.33.0/manifests/calico.yaml` returned HTTP 200 and ran. VERIFIED.
+
+Items not confirmed on a live cluster:
+
 1. minikube `start --nodes 3`, add-ons, profile and context behaviour: not run. Only the installed `minikube version`/`--help` output and v1.39.0 source (new clusters default to containerd; default Kubernetes `v1.37.0`) were read. EXPECTED OUTPUT (not captured).
 2. minikube `ingress` add-on controller identity in v1.39.0: UNVERIFIED (I state it "has historically" used ingress-nginx).
 3. Podman: the `KIND_EXPERIMENTAL_PROVIDER` and `KIND_EXPERIMENTAL_PODMAN_NETWORK` variable names are present in the v0.33.0 binary; rootless behaviour not run.
@@ -454,12 +576,20 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T2.10 (T2.10-exam-environment-docs-navigation-and-time.md) — 10 expected-output blocks
 **Known limitation.** This lesson was written on a machine with no kind binary and no VM, so the "real output captured" criterion is only partly met. The `kubectl config` and `kubectl create ... $do` blocks are real (kubectl client v1.37.1, throw-away kubeconfig, no cluster). Every block that needs a live cluster, a VM or a browser is labelled `EXPECTED OUTPUT (not captured)`. To meet the criterion fully, run sections 4 to 7 on a 3-node kind cluster plus a second `lab2` cluster and an Ubuntu VM reachable by `ssh lab-vm`, and replace those blocks.
+
+Exam facts re-checked on 2026-10-27 against the LF pages (tips, FAQ, resources allowed, ExamUI): unchanged from the research summary. Re-check them right before publishing and before the exam.
+
+Not confirmed on a live cluster or host:
+
 - Section 4, drill 4: output of `k explain pod.spec.restartPolicy` (field text and allowed values), expected.
 - Section 5: all cluster outputs (context switch on kind-lab, namespace create, rollout status, `get deploy -o wide`, pods file), expected.
 - Section 7, lab A: the whole flow, including `kind create cluster --name lab2` with the pinned image, the `check.sh` result `10 / 10`, and `ssh lab-vm` steps. The `kubectl config view -o jsonpath` filter used in task 8 was tested only on a throw-away kubeconfig.
 - Section 7, lab B: `yq '.kind'` on real downloaded examples; the `--dry-run=server` results for each example.
 - Section 7, lab C: `break.sh` end to end (Pod `probe` becoming Ready under Calico), `check.sh` result, and the `uname -r` comparison on the VM.
 - Whether `k run ... $do` also works offline: in my capture, `kubectl get po` against a dead server printed discovery errors; I did not test `k run ... $do` offline, so the lesson uses `k create deploy/job ... $do` for offline captures.
+
+UNVERIFIED exam items (do not rely on them):
+
 - The exact alias name on the exam hosts. The research summary says "kalias"; the fetched page text reads "`k` alias".
 - Whether kubectl works for root after `sudo -i` on the exam hosts.
 - How task weights are shown, whether partial credit exists, and whether the exam interface has a flag or notes feature.
@@ -468,20 +598,21 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - The killer.sh "17 questions per session" figure (research summary E20; the killer.sh FAQ says the simulator has more questions than the real exam).
 - Which result is first for the docs search "networkpolicy" (results are rendered by JavaScript).
 - Whether browser bookmarks are available in the exam browser.
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (verified facts; per-task host, `base`, no nested ssh, `sudo -i`, tools; remote desktop and keys; allowed docs; docs search; triage and alerts; context and namespace; verification; killer.sh; exam-day checklist)
-- [x] Every "Common mistake" from the entry appears in section 6 (wrong context/host; no triage; Ctrl+W)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no `:latest` images
-- [x] Done criteria: every exam fact cites an LF URL; the scavenger-hunt answer key with URLs is in lab B; every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real or labelled `EXPECTED OUTPUT (not captured)`
+
+Self-check:
 
 ### T3.01 (T3.01-define-build-and-modify-container-images.md) — 9 expected-output blocks
 **Known limitation.** kind and Podman are not installed on the machine where this lesson was written, and the exam-style Done criterion "includes real output on a cluster" cannot be met for in-cluster steps. Real output was captured from Docker 29.8.2 (OrbStack, linux/arm64, BuildKit v0.33.1, buildx v0.37.2) for: the single-stage versus multi-stage sizes, `docker history`, `docker run`/`curl`, the registry push and digest, `docker save` contents, the cache-order builds, the exec-form versus shell-form stop timing, and the non-root port-80 failure. To meet the remaining criteria a reader needs a 3-node kind cluster (`env/kind-up.sh`) and, for Podman, a machine with Podman installed. Every item below is unconfirmed.
+
+EXPECTED OUTPUT (not captured) blocks in this lesson:
+
 - Section 5, steps 6, 7 and 8: `kind load` messages, `crictl images`, `secret/regcred created`, Pod `condition met`, `imageID`, the three pull-secret `PASS` lines, `port-forward` + `curl`.
 - Section 4.4: the kind steps of the speed drill (step 8).
 - Section 6: every in-cluster error text (`exec format error`, `ErrImagePull`, `ErrImageNeverPull`, `CreateContainerConfigError` messages). The exact wording of the middle of the pull error depends on the registry and the containerd version; the quoted `runAsNonRoot` messages are from memory of the kubelet source and should be copied from a live event.
 - Section 7: the `PASS` lines for the kind-dependent verification parts of labs 7.1 and 7.3, and the kind-side cleanup commands.
+
+Version-dependent or environment-dependent claims to confirm:
+
 - **Docker/Podman on exam hosts: UNVERIFIED.** The official page lists only kubectl, yq, curl, wget, man (https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad).
 - **`podman save --format` values** (`docker-archive`, `oci-archive`, `oci-dir`, `docker-dir`) and the default: check with `podman save --help` and `podman save --format oci-archive` on a Podman host. Also check that locally built images are named `localhost/web:1.0`.
 - **`kind load docker-image` on kind v0.33.0 with `kindest/node:v1.37.0` (containerd 2.x)**, especially with Docker's containerd image store (Docker 29 defaults to it). If it errors (for example about a missing content digest or platform), use `docker save` + `kind load image-archive`, or `ctr -n k8s.io images import --all-platforms`.
@@ -495,18 +626,32 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - **ServiceAccount `imagePullSecrets` copied at Pod creation only, and `spec.imagePullSecrets` immutable on a live Pod** (sections 2.15 and 6): stated from the admission and Pod-update rules; confirm the exact rejection text on a live cluster by running `k apply` of a bare Pod manifest with a changed `imagePullSecrets`.
 - **Authenticated registry (`htpasswd`) in kind**: not run. The worked example (section 5, step 7) checks the Secret type, the Pod's `imagePullSecrets` name and the server name inside the Secret, which are structural checks, not a real authenticated pull.
 - **`k debug --target`** with a distroless container on v1.37: ephemeral containers are stable, but the exact flags are not exercised here.
----
+
+
+Self-check
+
+[x] Every subtopic bullet from the entry appears in section 2 or 4 (instructions incl. HEALTHCHECK, exec/shell + PID 1, caching + .dockerignore, multi-stage, bases + USER, build tools/BuildKit, tags/digests, registry, save/load, modify, kind/ctr, Pod mapping, imagePullSecrets, docker/podman UNVERIFIED)
+[x] Every "Common mistake" from the entry appears in section 6 (slow build, exec format error, port 80 permission denied, ErrImagePull private registry)
+[x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
+[x] All YAML is complete and valid for v1.37; no :latest images
+[x] Every "Done criteria" item is met: [x] real `docker images` size output before/after multi-stage (REAL OUTPUT, Docker); [x] covers both docker and podman commands; [x] every lab has setup, task, hints, collapsed solution, verification command and cleanup
+[x] No exam fact without a source URL; unknowns marked UNVERIFIED
+[x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
 
 ### T3.02 (T3.02-choose-and-use-the-right-workload.md) — 20 expected-output blocks
 **Known limitation.** The "real output of a Job with completions/parallelism" done criterion could not be met with a live run. The machine-wide kind lock (`/tmp/kind-lab.lock`) had been held since 2026-10-27 21:09 by another run whose clusters were still up, and my 20-minute wait for it expired, so I did not create a cluster. Because of that, all run-time outputs of Jobs, CronJobs, DaemonSets and StatefulSets are labelled `EXPECTED OUTPUT (not captured)`. To meet the criterion, run section 5 and the three labs on a 3-node kind cluster (v0.33.0, `kindest/node:v1.37.0`) and paste the real output.
+
 **Verified in this lesson** (against the API server of an existing kind v1.37.0 cluster using `--dry-run=server`, `explain` and read-only `get`, and against kubectl client v1.37.1 offline):
+
 - All YAML in sections 2 and 4 and in the labs (Job, Indexed Job, Job with `podFailurePolicy`, Job with `successPolicy`, CronJob, DaemonSet, headless Service plus StatefulSet) is accepted by a v1.37.0 API server.
 - Field names and enums: `job.spec.podFailurePolicy` (actions `Count`, `FailIndex`, `FailJob`, `Ignore`; `onExitCodes` and `onPodConditions`), `job.spec.successPolicy.rules` (`succeededIndexes`, `succeededCount`), `job.spec.podReplacementPolicy` (`Failed`, `TerminatingOrFailed`), `job.spec.backoffLimitPerIndex`, `job.spec.maxFailedIndexes`, `cronjob.spec.timeZone`, `statefulset.spec.persistentVolumeClaimRetentionPolicy`, `statefulset.spec.ordinals`.
 - Defaults from `k explain`: `backoffLimit` 6, `successfulJobsHistoryLimit` 3, `failedJobsHistoryLimit` 1, `concurrencyPolicy` Allow, `podManagementPolicy` OrderedReady, DaemonSet `maxUnavailable` 1 and `maxSurge` 0, StatefulSet `maxUnavailable` 1, PVC retention `Retain`, `timeZone` default is the controller's zone.
 - The kind default StorageClass is `standard` (`rancher.io/local-path`, `WaitForFirstConsumer`).
 - The exact validation errors quoted in sections 2 and 6 (restartPolicy, podFailurePolicy with OnFailure, successPolicy without Indexed, bad cron range, `CRON_TZ` in schedule, unknown time zone, `spec.replicas` in a DaemonSet).
 - `k create job` and `k create cronjob` fill in `restartPolicy` `Never` and `OnFailure`; the `yq` conversion Deployment to DaemonSet and StatefulSet.
+
 **Still to verify on a live cluster** (every item below depends on running Pods or on a version detail I could not confirm):
+
 1. Every block labelled `EXPECTED OUTPUT (not captured)` in sections 2.4, 5 and 7: Pod names, the `k get jobs` columns (the `STATUS` column of `k get job` and the `TIMEZONE` column of `k get cronjob` depend on the kubectl version), `rollout status` message wording for ds and sts, and the `getent hosts` output format.
 2. Section 5, step 4: that a Job created with `--from=cronjob/...` carries an `ownerReference` to the CronJob in v1.37 (the expected block assumes it does).
 3. GA versions quoted from the topic notes: `successPolicy` GA in v1.33 and `podReplacementPolicy` GA in v1.34. Confirm in the v1.33 and v1.34 release notes.
@@ -519,19 +664,24 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 10. That `volumeClaimTemplates` cannot be edited on an existing StatefulSet in v1.37 (historically immutable; newer releases may relax this). The fix in mistake 10 (delete and re-create) works either way.
 11. The Lab 3 timing: that the `*/2` CronJob fires within 3 minutes of the patch (the loop allows 180 s) and that `Asia/Tokyo` to `Etc/UTC` changes nothing for a `*/2` schedule except the field check.
 12. The `perl:5.34` image pull time and that `perl -Mbignum=bpi -wle 'print bpi(200)'` prints 200 significant digits.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (decision table, Job fields, Indexed/podFailurePolicy/successPolicy/podReplacementPolicy, CronJob fields, `create job --from`, DaemonSet tolerations/updateStrategy/nodeSelector, StatefulSet serviceName/ordinals/volumeClaimTemplates/podManagementPolicy/partition, StatefulSet DNS, ReplicaSet vs Deployment, bare Pods, imperative commands and no generator for DS/STS, rollout status for deploy/ds/sts)
-- [x] Every "Common mistake" from the entry appears in section 6 (rows 1-2 Job, row 4 CronJob pile-up, row 7 DaemonSet taint, row 10 StatefulSet Pending)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37 (server dry-run on a v1.37.0 API server); no `:latest` images
-- [x] Done criteria: decision table with one scenario per kind (section 2.1) [x]; real output of a Job with completions/parallelism [ ] (not met: no live run, labelled EXPECTED, explained in section 11 Known limitation); every lab has setup, task, hints, collapsed solution, verification and cleanup [x]
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED or listed in section 11
-- [x] Output blocks are real (labelled with their source), or labelled `EXPECTED OUTPUT (not captured)`
+
+
+Self-check:
 
 ### T3.03 (T3.03-configmaps.md) — 24 expected-output blocks
 **Known limitation.** This lesson was written when no kind cluster could be created: the machine-wide kind lock (`/tmp/kind-lab.lock`) stayed held for the full 20-minute wait, so, following the conventions, cluster outputs are labelled expected. The "done" criterion "real output showing env not updating vs volume updating" is therefore **not met** and the "propagation delay on kind" measurement is missing. To meet them you need the standard 3-node kind cluster (1 control plane + 2 workers, `kindest/node:v1.37.0`): run section 5 and record the output and the number `<N>` from the loop. Everything labelled `EXPECTED OUTPUT (not captured)` should be replaced with real output at that point.
+
+What was captured here: the YAML and client-side error messages of the `kubectl create configmap` commands (kubectl v1.37.1, `--dry-run=client`, section 2.3, 2.4, 2.10); the nginx reload behaviour in Docker (Lab B); the busybox `stat`/`find`/`printenv` command forms in Docker, and the `find -L` behaviour on a hand-built symlink layout like a kubelet ConfigMap volume (section 2.5; plain `find -type f` prints nothing there, `find -L` lists the visible files). Version-dependent texts were read from the Kubernetes v1.37.1 source code and changelog, which is not the same as a live run.
+
 **Facts the entry asked to verify on a real cluster**
+
+| # | Item | State |
+|---|---|---|
+| 1 | Propagation delay for a mounted ConfigMap on kind | NOT MEASURED. Source defaults: `syncFrequency` 1m, `configMapAndSecretChangeDetectionStrategy` Watch (`pkg/kubelet/apis/config/v1beta1/defaults.go`, v1.37.1). Docs: up to sync period + cache propagation. Run the loop in section 5 step 2 and read the kubelet settings with the `configz` command. |
+| 2 | Static Pod reference prohibition text in 1.37 | FROM SOURCE, not run: kubelet error `static pods may not reference configmaps` (`pkg/kubelet/config/common.go`); NodeRestriction message `node "<node>" can not create pods that reference configmaps`; changelog entry "Removed the `PreventStaticPodAPIReferences` feature gate. Static Pods can no longer reference API resources, and this behavior can no longer be disabled." (CHANGELOG-1.37.md, PR 140226). Confirm with the reproduction in 2.11 on a node (kind control-plane or a kubeadm VM) and note the exact kubelet log line. |
+
 **Other expected (not captured) blocks to confirm on a live v1.37 cluster**
+
 - 2.3: `configmap/... created` lines, `k get cm` table, `describe` layout.
 - 2.4: the size-limit error line. Re-checked against the v1.37.1 source in the fix round: `field.TooLong` still says `may not be more than N bytes` (the newer-looking `must have at most N bytes` wording does not appear in `field/errors.go` at v1.36.0, v1.37.1 or master), `ErrorBody` prints `Too long: <detail>`, and the empty path prints `[]`. So the line is derived from source, but it was not produced by a live API server. The two `Forbidden` lines for the immutable ConfigMap are also from source only.
 - 2.5: `consume` Pod outputs (`env`, `ls -la /etc/cfg` layout, `find -L`, read-only error, `stat` 644); `k set env --from` output, its warning `key nginx.conf transferred to NGINX_CONF`, and the `--list` wording; precedence logs (`K=B`, `K=explicit`).
@@ -552,6 +702,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.04 (T3.04-create-consume-secrets.md) — 21 expected-output blocks
 **Known limitation.** The done criterion "real output from a live v1.37 cluster" is only partly met. On the day of writing, the machine-wide kind lock `/tmp/kind-lab.lock` was held by a directory dated 2026-10-27 21:09 that was still present about 14 hours later (earlier clusters `k-t111` and `k-t203` were still running, and other writers were queued behind the same lock). I did not break another writer's lock, so no kind cluster was created for this topic. Captured here: all `kubectl create secret ... --dry-run=client` outputs, the TLS Secret from real certificates (OpenSSL 4.1.0), the base64 encode/decode outputs, the go-template/jsonpath decoding, the swapped `--cert`/`--key` error, and the Docker `busybox:1.36` checks. Everything that needs a Pod, the API server or a kubelet is labelled `EXPECTED OUTPUT (not captured)`. To meet the criterion, run sections 5 and 7 on a 3-node kind cluster (`kindest/node:v1.37.0`).
+
+Blocks labelled `EXPECTED OUTPUT (not captured)`, by section:
+
 - 2.3: `k apply -f sa-token.yaml` and the token Secret keys (`token`, `ca.crt`, `namespace` filled by the control plane).
 - 2.5: `k apply` of the `data` + `stringData` manifest, the merged `data` and the plain text in `last-applied-configuration`.
 - 2.9: the immutable-Secret rejection text, and the `Too long` rejection of the 1.1 MB `big.bin` Secret.
@@ -559,6 +712,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - 5 (all steps): `k get secret`, `k get -o yaml`, `describe`, `printenv`, `ls -lL`, `stat`, `wc`, `mount`, the read-only write failure, the default-mode check (`644`), the read-only proof on a Pod without `readOnly` (`mount` shows `ro`, the write fails), and the update behaviour (file changes, env does not).
 - 6: the `illegal base64 data` error line, and the `CreateContainerConfigError` status and event.
 - 7, Labs A, B, C: all `OK-...` lines and the diagnosis outputs of Lab C.
+
+Version-dependent and exact-text claims I could not confirm on v1.37:
+
 1. **Secret volume is a tmpfs on kind nodes** (`mount` shows `tmpfs on /etc/creds type tmpfs (ro,...)`). Entry says to verify. Needs a kind cluster.
 2. **Kubelet mounts Secret volumes read-only regardless of `readOnly`** (step 5, `mode-check` Pod has no `readOnly`; expected: `ro` mount and `Read-only file system`). Stated from the Kubernetes documentation and kubelet behaviour; not run. Needs a cluster.
 3. **Default `defaultMode` is `0644` in 1.37** (the doc says so; the `mode-check` Pod in section 5 reads `644`). Needs a cluster.
@@ -576,6 +732,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.05 (T3.05-define-resource-requirements.md) — 18 expected-output blocks
 **Known limitation.** This lesson was written without a live cluster: kind was not installed, I downloaded the kind v0.33.0 binary, but the machine-wide lock `/tmp/kind-lab.lock` (dated 2026-10-27 21:09) stayed held by another job for the full 20-minute wait, so by the conventions I did not create a cluster. The done criteria "real output of `qosClass` for three Pods" and "real resize demo with `restartCount` unchanged" are therefore **not met with real output**; they are shown as `EXPECTED OUTPUT (not captured)` (section 5 steps 2 and 7, Lab A, Lab B). To meet them, run section 5 on a 3-node kind cluster (`kindest/node:v1.37.0`) and replace the expected blocks. What was captured: Docker kernel output for `cpu.max`, `memory.max`, `cpu.stat` throttling and the OOM exit code 137 (section 2.4), offline `kubectl` 1.37.1 output for `set resources --local` and its error messages (sections 2.2, 2.11), and offline `yq` v4.54.1 output (section 2.11).
+
+Items to confirm on a live v1.37 cluster:
+
 1. **Entry "VERIFY" item 1: in-place resize command and `resizePolicy` defaults in 1.37.** The command `k patch pod NAME --subresource resize --patch '...'`, `resizePolicy` values `NotRequired` (default) and `RestartContainer`, GA status since v1.35, and the success message `pod/NAME patched`. Also confirm `kubectl edit pod NAME --subresource=resize` works.
 2. **Entry "VERIFY" item 2: Pod-level resources stage in 1.37.** Section 2.9 is marked UNVERIFIED (the entry says beta; beta since v1.34 is from memory). Confirm the stage, the default state of the gate, `k explain pod.spec.resources`, how container-level values must fit inside pod-level values, whether containers without limits can burst to the pod-level limit, and the QoS rule with pod-level resources; then add them to section 2.9.
 3. Resize status: that `status.resize` is gone and the conditions `PodResizePending` (reasons `Deferred`, `Infeasible`) and `PodResizeInProgress` are the 1.37 mechanism; `status.containerStatuses[].resources` and `allocatedResources` field names; the full list of resize restrictions (init containers, memory-limit decrease, `restartPolicy: Never` Pods and `RestartContainer`).
@@ -590,11 +749,12 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 12. Row "Pod starts but dies at once" in section 6 (`memory: 128m`): the exact runtime error text.
 13. Not tested here: `LimitRange` interplay beyond the description (T3.06 owns the test).
 14. `k set resources ... --requests=cpu=0,memory=0 --limits=cpu=0,memory=0` stores `"0"` (verified offline). On a live cluster confirm that the resulting Pods still show `BestEffort`, i.e. that zero quantities are ignored by the QoS calculation. The lesson no longer relies on this: drill 5 and section 4.1 use a JSON patch `remove` of the `resources` block, which should give `{}` and `BestEffort` (confirm on a live cluster).
-15. Links to [T2.03](../part2-basics/T2.03-pods-in-depth.md) and [T3.06](../part3-ckad/T3.06-requests-limits-and-quotas-resourcequota-and.md): those files did not exist in the folder when this lesson was fixed, so the file names could not be checked. Confirm the slugs when they are written.
+15. Links to [T2.03](part2-basics/T2.03-pods-in-depth.md) and [T3.06](part3-ckad/T3.06-requests-limits-and-quotas-resourcequota-and.md): those files did not exist in the folder when this lesson was fixed, so the file names could not be checked. Confirm the slugs when they are written.
 16. Lab B uses `uid.txt` to assert that the Pod is the same before and after the resize; confirm on a live cluster that the memory resize with `RestartContainer` keeps the Pod UID.
 
 ### T3.06 (T3.06-requests-limits-and-quotas-resourcequota-and.md) — 0 expected-output blocks
 **Known limitation.** The "real rejection messages" and "defaults injected" criteria are met with real output from kind v0.33.0 / `kindest/node:v1.37.0` (client kubectl v1.37.1). Differences from the lab spec: the capture cluster was named `k-t306` (context `kind-k-t306`), 1 control plane + 2 workers, with kind's default CNI instead of Calico; the lesson text uses cluster `lab`. Nothing in this lesson depends on the CNI. The items below were not run and should be confirmed on a v1.37 cluster.
+
 * Plain `cpu` and `memory` as aliases of `requests.cpu` and `requests.memory` in `spec.hard` (taken from the docs page, not run).
 * Scopes `Terminating` and `NotTerminating` (docs page only).
 * `type: Pod` with `min`, and `type: Pod` or `PersistentVolumeClaim` with `default`/`defaultRequest`: not run. The lesson only uses `max` on Pod and `min`/`max` on PVC (run).
@@ -610,6 +770,11 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.07 (T3.07-utilize-persistent-and-ephemeral-volumes.md) — 20 expected-output blocks
 **Known limitation.** No cluster of its own was run for this lesson. kind v0.33.0 was downloaded, but the machine-wide cluster lock (`/tmp/kind-lab.lock`) was held by other sessions for the whole 20-minute wait, so no cluster was created, as conventions section 11 requires. The "real output captured, write, delete Pod, read" criterion is therefore met only as a `EXPECTED OUTPUT (not captured)` walkthrough (section 5) with a complete, copy-paste-ready procedure. To meet it: run the section 5 and section 7 commands on a 3-node kind cluster (or 3 VMs) with `kindest/node:v1.37.0` and replace the labelled blocks with real output. The default kind CNI vs Calico choice does not affect these labs.
+
+What was actually run (labelled `REAL OUTPUT`): read-only `kubectl explain`, `kubectl get sc` and `kubectl apply --dry-run=server` against an existing kind cluster with a v1.37.0 API server (another session's cluster; nothing was created), client dry-runs with kubectl v1.37.1, and a Docker bind-mount demonstration.
+
+Items to confirm on a live v1.37 cluster:
+
 - Image volumes (2.9): that `image.reference` / `image.pullPolicy` work end to end on the kind node runtime (containerd version on `kindest/node:v1.37.0`), that the feature is GA (stable) in v1.36 (taken from the entry; the `explain` text does not state the stage), the file listing in `ls /opt/nginx-fs/usr/share/nginx/html`, and the exact `touch` error text. Also the event text if the runtime does not support image volumes.
 - `gitRepo` (2.12, 6, 7.3): exact kubelet event/message for a Pod with a `gitRepo` volume in v1.37 (the API server only warns: `deprecated in v1.11, and disabled by default in v1.33+`). Confirm the Pod stays `ContainerCreating` with `FailedMount`.
 - Image tag `alpine/git:2.47.2` exists and its entrypoint is `git`; the kind nodes can reach `github.com`; `README.md` exists at the root of `kubernetes/examples` (used in the lab verification); the `master` revision name of that repo.
@@ -624,8 +789,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.08 (T3.08-multi-container-pod-patterns-init-sidecar.md) — 0 expected-output blocks
 **Known limitation.** None of the required done criteria is unmet: the Init-state progression, the native-versus-classic Job comparison and the lab checks were all run on a live kind v0.33.0 / v1.37.0 cluster. Two limits remain. First, the cluster used kindnet, not Calico (irrelevant here). Second, each experiment was run once, so timings (back-off delays, 15 s probes, 30 s grace periods) are single observations. To repeat everything yourself, use a 3-node kind cluster as in the conventions.
+
+Checked on the live cluster (these were on the "must verify" list of the entry):
+
 - Native sidecar shutdown order on v1.37: the main container is stopped first, the sidecar gets `SIGTERM` only after `main` has exited (timestamps in section 5, step 5). With two regular containers both get `SIGTERM` at the same second.
 - How `describe` shows a sidecar: under `Init Containers:` with `State: Running` and `Ready: True`; no `Restart Policy` line is printed (section 5, step 4).
+
+Not tested, taken from the Kubernetes documentation or from general knowledge. Confirm them on a live cluster before relying on them:
+
 1. **Re-run conditions of init containers** (2.3, the "Rerun" row): that they run again after the Pod sandbox is recreated or after their records were garbage-collected, but not after an app container restart. Not tested.
 2. **Several native sidecars on termination** (2.4, 2.11): only one sidecar was stopped in the live test. The reverse-order rule for several sidecars is from the docs and was not measured.
 3. **`restartPolicy: OnFailure` on the Pod and init containers** (2.3 table): the claim that it behaves like `Always` was not run. `Always` and `Never` were run.
@@ -644,6 +815,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.09 (T3.09-implement-probes-and-health-checks.md) — 11 expected-output blocks
 **Known limitation.** This lesson was written on a machine where the kind cluster for this topic could not be created: the machine-wide kind lock (`/tmp/kind-lab.lock`) was held by another job for the whole 20-minute waiting period, so no cluster was started. No command in this lesson was run on a live Kubernetes v1.37 cluster, and every output block is `EXPECTED OUTPUT (not captured)`. Two criteria of the topic entry cannot be fully met without a cluster: the "real events for a failing liveness and readiness probe" criterion (section 5 has the expected shape instead) and the "Facts the writer must VERIFY on a real cluster" items (defaults, event formats). To meet them, run sections 5 and 7 on a 3-node kind v0.33.0 cluster with `kindest/node:v1.37.0`, and replace each label with the real output.
+
+Confirm on a live v1.37 cluster:
+
 1. **Probe defaults** (entry item): `periodSeconds` 10, `timeoutSeconds` 1, `failureThreshold` 3, `successThreshold` 1, `initialDelaySeconds` 0, and the minimums (`periodSeconds` 1, `timeoutSeconds` 1). Use `k explain pod.spec.containers.livenessProbe.<field>` and the `describe` line `delay=0s timeout=1s period=10s #success=1 #failure=3`.
 2. **Event message formats** (entry item): `Liveness probe failed: HTTP probe failed with statuscode: 500`; `Readiness probe failed: HTTP probe failed with statuscode: 404`; `Container <name> failed liveness probe, will be restarted`; the `connection refused` and `context deadline exceeded (Client.Timeout exceeded while awaiting headers)` texts; the exec output text; the startup failure text.
 3. All output blocks in sections 2.3, 5.1 to 5.6 and the expected outputs of the labs (`READY`/`RESTARTS` columns, `Last State` with exit code 137 for a `sleep` PID 1, the `describe` Events layout).
@@ -661,6 +835,7 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.10 (T3.10-deployments-and-rolling-updates.md) — 3 expected-output blocks
 **Known limitation.** Most output blocks in this lesson are real: they were captured on a 3-node kind v0.33.0 cluster (node `kindest/node:v1.37.0`, client kubectl v1.37.1) created for this lesson and deleted afterwards. Two differences from the standard lab cluster: it used kind's default CNI (kindnet) instead of Calico, and the control plane had no extra port mappings. Neither affects Deployments. The blocks below could not be captured and are labelled `EXPECTED OUTPUT (not captured)` or are marked here. To close them, run the lab on the standard `lab` cluster and confirm each item.
+
 1. `CHANGE-CAUSE` showing `<none>` when the annotation was never set (section 6, row "CHANGE-CAUSE empty", EXPECTED OUTPUT, not captured). Every Deployment captured in this run had the annotation set at some point.
 2. The Pod event `Readiness probe failed: HTTP probe failed with statuscode: 404` (section 6, EXPECTED OUTPUT, not captured). Confirm the exact wording by pointing the probe path at a missing URL.
 3. The exact `k rollout status` progress line while a rollout is stuck on a bad image but the deadline has not yet passed. The pattern `Waiting for deployment "shop" rollout to finish: N out of M new replicas have been updated...` is from other captured runs (the paused Deployment printed it for `0 out of 3`), and the final `error: deployment "shop" exceeded its progress deadline` is captured. The in-between line for a bad image was not saved.
@@ -671,17 +846,15 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 8. Percentage rounding examples in section 2.3 (the 10-replica row): rounding rules were read from `k explain` on v1.37, but the 13-Pod ceiling was not observed with 10 real replicas.
 9. The kubectl `undo` warning about `last-applied-configuration` only appears for Deployments created with `k apply`. Deployments created with `k create deploy` (as in Lab A) did not print it in the captured runs.
 10. `k rollout restart` timestamp in Step 10 uses the timezone of the capture machine. Yours will differ.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [x] Every "Done criteria" item from the entry is met: [x] real rollout history output with change-causes (sections 5 and 7); [x] stuck rollout break-fix includes the condition text (Lab C); [x] every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+
+Self-check:
 
 ### T3.11 (T3.11-deployment-strategies-with-primitives-blue-green.md) — 3 expected-output blocks
 **Known limitation.** The captured blocks come from a 3-node kind cluster (v0.33.0, `kindest/node:v1.37.0`, default CNI kindnet). The criteria "uses Calico exactly as in `env/kind.yaml`" and "tested on the exam-style environment" are not met: the capture used kindnet instead of Calico, and no kubeadm VM was used. To close it, rerun sections 5 and 7 on the `lab` cluster built by `env/kind-up.sh` (Calico v3.33.0) and compare the counts.
+
+Items not confirmed on a live v1.37 cluster:
+
 1. EXPECTED OUTPUT (not captured): section 5 step 7, `k scale deploy web-blue --replicas=0` followed by `k get deploy` (the same output shape was captured for the canary Deployments in steps 10 to 12).
 2. kube-proxy `nftables` mode: the random-selection behaviour is not captured here. The iptables-mode rules (`statistic --mode random`, probabilities 1/3, 1/2, then the rest) were captured. Expected: nftables mode also picks a backend at random with equal chance, so the replica-ratio rule holds. Confirm on a cluster with `mode: nftables` in the kube-proxy ConfigMap.
 3. The Gateway API `HTTPRoute` weighted split: the YAML was accepted by the API server with the Gateway API v1.6.3 standard CRDs (`k apply --dry-run=server` printed `created (server dry run)` for the Services, Gateway and HTTPRoute), but it was not run against a controller, so the actual 90/10 split is not measured. Also confirm that the `traefik` GatewayClass installed by `env/kind-addons.sh traefik` honours the weights, and that a Gateway listener on port `8000` is accepted by that Traefik install (the listener port must match a Traefik entry point).
@@ -694,6 +867,8 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 10. The docs URL `https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/` returned HTTP 200 with the "Canary deployments" section when fetched; the T4.22 link is a forward link to a lesson that may not exist yet.
 
 ### T3.12 (T3.12-provide-and-troubleshoot-access-to-applications.md) — 26 expected-output blocks
+None of the commands in this lesson was run on a live cluster (kind and multipass are not installed on the machine where it was written). Every output block is `EXPECTED OUTPUT (not captured)`. Confirm on kind v0.33.0 with `kindest/node:v1.37.0`:
+
 1. All output blocks in sections 4.1, 5, and 7 (the shapes of `get svc -o wide`, `get endpointslices`, `wget` errors, `netstat` output, `nslookup` output, IP addresses and names).
 2. NodePort default range 30000-32767 on the v1.37 kube-apiserver, and the exact validation error text for an out-of-range and an already-allocated nodePort.
 3. The `externalIPs` deprecation: confirm it is deprecated in v1.36 as the topic entry states, and capture the exact warning text v1.37 prints when a Service sets `externalIPs`. Marked UNVERIFIED here.
@@ -715,6 +890,8 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 19. Section 5 rung 4: the `PORTS` column of the EndpointSlice shows `80` after the `targetPort` fault and `8080` after the fix.
 
 ### T3.13 (T3.13-use-ingress-rules-to-expose-applications.md) — 4 expected-output blocks
+Known limitation. This lesson now has real output for almost everything because a 3-node kind cluster could be created on the writing machine. Items that remain open:
+
 1. **Cluster used kindnet, not Calico.** The cluster was created from `env/kind.yaml` with `disableDefaultCNI` and `podSubnet` removed (Ingress does not depend on the CNI). Re-run section 5 on the standard Calico cluster to confirm nothing changes. Meeting this needs the standard `lab` cluster from `env/kind-up.sh`.
 2. **Filled ADDRESS column** (section 2.11) is `EXPECTED OUTPUT (not captured)`. It needs a LoadBalancer Service with an IP (MetalLB chart 0.16.1 on kind, or a cloud).
 3. **`env/kind-addons.sh traefik` as written does not work for this lesson**: it enables `providers.kubernetesGateway` without installing the Gateway API CRDs (Helm failed), and the Service stays `LoadBalancer` with `<pending>` and random NodePorts. The lesson uses its own `helm upgrade --install` with `service.spec.type=NodePort`. The env owner should change the script (call `gateway-api-crds` first, set `service.spec.type=NodePort`, `ports.web.nodePort=30080`, `ports.websecure.nodePort=30443`) or the lesson should keep the explicit commands.
@@ -727,23 +904,21 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 10. **`defaultBackend` with rules.** On Traefik it did not catch unmatched requests when rules were present (section 2.8). Check other controllers or the docs wording before relying on it in a task.
 11. **Medium lab port-forward.** In the captured run an earlier port-forward on 8443 was still running, so the lab's own port-forward did not bind and the final `kill` found no process. The command sequence in the lesson is the intended one; run it once from a clean shell to confirm.
 12. **`openssl`** is not in the exam tool list ([E9](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad)); whether it exists on exam hosts is UNVERIFIED. Drill 3 and Lab 2 use it only to make a lab certificate.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [x] Every "Done criteria" item from the entry is met
-  - [x] Real curl outputs for each routing rule (section 5 step 3 and 4, labs)
-  - [x] Notes the ingress-nginx retirement with the official blog URL (section 2.12, section 10)
-  - [x] Every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+
+Changelog: none yet (first version).
+
+Self-check:
 
 ### T3.14 (T3.14-demonstrate-basic-understanding-of-networkpolicies.md) — 0 expected-output blocks
 **Known limitation.** Every kubectl output in sections 2, 5 and 6 and every lab check was run on one real cluster: kind v0.33.0, `kindest/node:v1.37.0` (digest pinned as in the conventions), 1 control plane + 2 workers, Calico v3.33.0, kubectl v1.37.1, on Docker Desktop (arm64 macOS). The "default kindnet" checks in step 1 used a second, temporary cluster of the same shape. Three things differ from `env/kind-up.sh` or from an exam cluster, and are therefore not confirmed as written:
+
 - The captures used `podSubnet: 10.244.0.0/16` with `CALICO_IPV4POOL_CIDR` set to the same value, not the `192.168.0.0/16` in `env/kind.yaml`, because the Docker `kind` network on the capture machine was `192.168.147.0/24` and the default made Pods unable to reach the API server (symptoms in the Lab environment note). `env/kind-up.sh` as written was **not** run to completion on a healthy network. To confirm: run `env/kind-up.sh` on a machine whose Docker `kind` network is `172.18.0.0/16` and check that `calico-node` and CoreDNS become Ready.
 - No exam cluster was available, so which network plugin the exam uses stays **UNVERIFIED** ([E23 in the research summary](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad) names no plugin).
 - No VM-based (kubeadm) cluster was used. Nothing in this lesson depends on one.
+
+Items not confirmed on a live v1.37 cluster, or only partly:
+
 1. **Plain Flannel and other non-enforcing plugins.** Section 2.1 and case 1 of section 6 say plain Flannel does not enforce NetworkPolicy. That comes from the Kubernetes docs and the research summary (§5 says Flannel "has no NetworkPolicy support of its own"), not from a test here. The "no effect" symptom (`api-ok` after a deny) was therefore not captured; the kindnet cluster enforced policy. To confirm: create a kind cluster with `disableDefaultCNI: true`, install Flannel, apply `default-deny-ingress`, and check that the client still prints `api-ok`.
 2. **kindnet coverage.** Only default-deny ingress and default-deny egress were tested on kindnet. `ipBlock`, `endPort`, AND/OR and namespace selectors were tested on Calico only. The tested kindnet image was `docker.io/kindest/kindnetd:v20260820-69b56db7`.
 3. **Calico data plane.** Section 2.11 says Calico uses iptables, IP sets or eBPF. Which mode the capture cluster used (the manifest default) was not checked. On kindnet, an `nft` table named `inet kindnet-network-policies` was seen.
@@ -758,7 +933,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.15 (T3.15-understand-serviceaccounts.md) — 2 expected-output blocks
 **Capture notes.** The "real output captured" and "working in-Pod API call" criteria are met: the lesson was run on a kind v0.33.0 cluster named `k-t315` with node image `kindest/node:v1.37.0` (1 control plane, 2 workers) and kubectl v1.37.1. Two differences from the standard lab cluster: it used the default kindnet CNI instead of Calico (nothing here depends on the CNI), and the cluster name and node names differ (`k-t315-*` instead of `lab-*`). The cluster was deleted afterwards. All labs were run end to end with the verification commands shown. The revoke table in 2.6 was measured with `curl` from the laptop against the API server address in the kubeconfig, not from inside a Pod.
+
 **Not run or not confirmed (every item below is stated in the lesson with a hedge or a label):**
+
 1. **Default token rotation.** The injected token asks for `expirationSeconds: 3607` (real) and its `exp` is one year after `iat` (real, `31536000`). The rule "refresh at 80% of TTL or after 24 hours" is quoted from the docs ([configure-service-account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)). I confirmed rotation only on a 600-second custom token (step 14). That the default token rotates about every 24 hours (because of the one-year `exp`) is my inference. To check: run a Pod for more than 24 hours and compare `iat`.
 2. **Why `exp` is one year.** I attribute it to `--service-account-extend-token-expiration` (default true), per the flag's description in the docs. I did not read the kube-apiserver flags on the kind control plane (`k -n kube-system get pod kube-apiserver-<node> -o yaml`). Also unverified: what the API server does with the `warnafter` claim (stale-token audit annotation and metric).
 3. **Maximum `--duration` on a capped cluster.** On kind there was no cap (up to `2^32` seconds was granted). The cap flag `--service-account-max-token-expiration` is documented, but I did not set it and so did not see whether the server shortens or rejects a longer request. The kubectl help says "The server may return a token with a longer or shorter lifetime."
@@ -772,8 +949,13 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 11. **Exam facts.** Only E2, E3, E9 and E13 are used, with the URLs given. Whether `jq` exists on exam hosts is not promised in E9 (the page lists kubectl, yq, curl, wget and man), so the lesson avoids relying on it.
 12. **`REAL OUTPUT (Docker)`.** The `jwt` helper was tested on `busybox:1.36` and `ubuntu:24.04` with a hand-made sample JWT (not a cluster token). Both printed the full JSON with return code 0. The simpler variant without padding printed an error (`base64: truncated input` on busybox, `invalid input` on Ubuntu), which is why the helper pads. On the cluster the helper was used with real tokens (output above).
 
+There are no `EXPECTED OUTPUT (not captured)` blocks in this lesson. Every output block in sections 2 to 7 is real and labelled, apart from the items above that are marked in the text as not captured.
+
 ### T3.16 (T3.16-understand-authentication-authorization-and-admission-control.md) — 2 expected-output blocks
 **Known limitation.** All kubectl output in this lesson is `REAL OUTPUT (kind v0.33.0, v1.37.0)`, captured on a 3-node kind cluster named `k-t316` (node image `kindest/node:v1.37.0` pinned by digest, kubectl v1.37.1, default kindnet CNI rather than the Calico of `env/kind.yaml`, and no `extraPortMappings`, because nothing here needs NetworkPolicy or NodePort traffic). There are no `EXPECTED OUTPUT (not captured)` blocks. The three labs were run end to end on that cluster: their setup, solution and verification blocks all produced the shown results (before the fix the checks printed FAIL, after it only PASS). Exception: the review round changed a few commands after that run (items 10 to 12 below), and those changes were checked by reading only. What the cluster could not prove is listed below. To close the rest you need a kubeadm cluster (kubeadm 1.37 VMs, as in the CKA lessons) where you can edit `/etc/kubernetes/manifests/kube-apiserver.yaml`.
+
+Unconfirmed on a live cluster:
+
 1. **`AuthenticationConfiguration` and `AuthorizationConfiguration` files** (2.2 and 2.4). The YAML shapes, the "stable since v1.34" and "stable since v1.32" statements, and "cannot be mixed with the old flags" come from the Kubernetes docs ([authentication](https://kubernetes.io/docs/reference/access-authn-authz/authentication/), [authorization](https://kubernetes.io/docs/reference/access-authn-authz/authorization/)) and from the `kube-apiserver -h` help text of the lab cluster (which shows both flags and the mutual-exclusion text). The files themselves were not loaded into an API server; the example is marked "shape only".
 2. **OIDC login** (2.2) and a **webhook authorizer** were not run (they need an external identity provider or authorization server).
 3. **The audit mode of PSA** (2.9). The `audit` label was set, but the cluster has no audit log, so the audit annotation was not observed. `enforce` and `warn` were observed.
@@ -789,6 +971,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.17 (T3.17-understand-application-security-securitycontexts-and-capabilities.md) — 10 expected-output blocks
 **Known limitation.** Most outputs in this lesson are real, captured on a 3-node kind cluster (v0.33.0, node image v1.37.0, kindnet CNI instead of Calico, on an OrbStack Docker host). Two facts the entry asked for depend on the host kernel, and only one kernel was available: user namespaces worked on it; AppArmor is not enabled on it. To meet those fully you need a second environment: the same kind cluster on a Linux host with AppArmor enabled, and the kubeadm VMs of Part 4 (or any Ubuntu node) for `capsh` on a VM. Calico was not installed because nothing here needs NetworkPolicy.
+
+Items not confirmed on a live v1.37 cluster, or labelled expected:
+
 1. **appArmorProfile on a host that has AppArmor.** Captured only the failure case (`Cannot enforce AppArmor: AppArmor is not enabled on the host`, Pod status `AppArmor`). The working `RuntimeDefault`, `Unconfined` and `Localhost` cases, the `cat /proc/1/attr/current` observation (section 2.7, 2.11; `EXPECTED OUTPUT (not captured)`) and loading a profile on a node were not captured. Needs a Linux host with AppArmor enabled. "GA v1.31" comes from the entry; only the field's existence was checked here (`k explain`).
 2. **User namespaces: requirements per host.** It worked on kernel `7.2.12-orbstack` with containerd 2.3.4 and runc 1.4.3, with no feature gate set in the kind config. The minimum kernel and runtime versions, and which volume types fail, were not tested; read the user-namespaces page. "GA v1.36" is from the entry. The statement about not combining `hostUsers: false` with other host sharing fields was not tested.
 3. **`supplementalGroupsPolicy`.** The feature status in v1.37 is UNVERIFIED. The `k explain` text on v1.37.0 still says "(Alpha) ... requires the SupplementalGroupsPolicy feature gate", which may be stale; the docs page's feature-state line could not be read in the fix round; `Strict` was not tested.
@@ -803,16 +988,16 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 10. **Lab status.** The Lab C `break.sh` flow, the fix and the `verify.sh` script were run on the cluster (including two partial fixes that fail). Lab A (Pod `idcheck`) and the exact Lab B files were not applied as written; they reuse fields from Pods that were run (`hard`, Deployment `web`).
 11. **Image tags.** `busybox:1.36`, `nginx:1.27`, `nginxinc/nginx-unprivileged:1.27` and `curlimages/curl:8.11.1` (used only for an in-cluster HTTP check, 200 returned) were pulled during the run. The curl image tag is not used in any lab command in this lesson.
 12. **Safe-sysctl list.** Only `net.ipv4.ip_local_port_range` and `net.ipv4.ip_unprivileged_port_start` were observed to be accepted. The full list is on the sysctl docs page, which was not opened.
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (pod-level fields incl. fsGroupChangePolicy, supplementalGroups, sysctls; container-level fields incl. appArmorProfile; precedence; capabilities; seccomp; read-only root + emptyDir; host* and hostPath; hostUsers; verification commands; PSS mapping; procMount and SELinux)
-- [x] Every "Common mistake" from the entry appears in section 6 (runAsNonRoot root image; /tmp read-only; capabilities at Pod level; port 80 after drop ALL)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37 (applied on a v1.37.0 cluster; the Lab A snippet and the section 4.2 YAML are complete manifests or tested equivalents); no `:latest` images
-- [x] Done criteria: real `id` and `Cap` output before and after hardening (section 5); field table complete (sections 2.2, 2.3, 3); every lab has setup, task, hints, collapsed solution, verification and cleanup
-- [x] No exam fact without a source URL (E2, E3, E13 cited); unknowns marked
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+Self-check:
 
 ### T3.18 (T3.18-discover-and-use-resources-that-extend.md) — 22 expected-output blocks
 **Known limitation.** No kind cluster could be created while this lesson was written. The machine-wide lock `/tmp/kind-lab.lock` (conventions section 11) was already held by an earlier run and was not released during the 20-minute wait, so the writer gave up as the rules say. All `kubectl` output in this lesson is therefore labelled `EXPECTED OUTPUT (not captured)`. Two done criteria are only met with expected output instead of captured output: "Real api-resources/explain output for a CRD" and "Operator lab shows the CR status changing". To meet them, run sections 5 and 7 on a 3-node kind cluster (`kindest/node:v1.37.0`, kubectl 1.37.x, Helm v4.3.1) and paste the output. Docker was available but cannot stand in for a cluster.
+
+What *was* checked for real, without a cluster (labelled in the text): the cert-manager chart version and the CRDs and Deployments it renders (`helm search repo`, `helm template`, Helm v3.19.2, on 2026-10-28); the Gateway API v1.6.3 `standard-install.yaml` contents (`yq`); the syntax of every YAML block (parsed with `yq`); the `mk` helper and its output.
+
+Items to confirm on a live v1.37 cluster:
+
 1. **CRD validation error texts in 1.37** (entry requirement). The messages in sections 2.8, 5 (Step 6) and 6 are written from knowledge of the apiextensions validation code, not captured. Confirm: type error (`spec.replicas in body must be of type integer: "string"`), `enum` (`Unsupported value ... supported values:`), `required` (`Required value`), `maximum` (`should be less than or equal to 10`), strict decoding (`unknown field "spec.replica"`), the CRD-name error (`must be spec.names.plural+"."+spec.group`) and the group error (`should be a domain with at least one dot`).
 2. Every `EXPECTED OUTPUT (not captured)` block: sections 2.3 (`get crd`, `api-resources`, `-o wide`), 2.7 (`-o wide`), 5 (Steps 1-11), 7.2 (Pods, watch, Secret). Check column order and widths, `kubectl explain` layout in kubectl 1.37 (`GROUP/KIND/VERSION/FIELD` header, `<empty>` wording), and the `describe crd` layout.
 3. **Helm version.** The conventions pin Helm v4.3.1. Chart discovery and rendering were run with Helm v3.19.2. Confirm that `helm install ... --version v1.21.3 --set crds.enabled=true --wait --timeout 5m` behaves the same with v4.3.1, and that `jetstack/cert-manager` v1.21.3 is still current (it was the newest chart on 2026-10-28).
@@ -827,6 +1012,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.19 (T3.19-use-helm-to-deploy-existing-packages.md) — 12 expected-output blocks
 **Known limitation.** The "real helm history and rollback output" criterion of the entry is **not met**. No kind cluster could be created while writing this lesson: the machine-wide kind lock (`/tmp/kind-lab.lock`, conventions section 11) was held by another run for the whole 20-minute wait. Everything that needs a cluster is labelled `EXPECTED OUTPUT (not captured)`: installs, upgrades, `helm list`, `helm status`, `helm get`, `helm history`, `helm rollback`, `helm uninstall`, `--dry-run=server`, the release Secrets, and all kubectl output in sections 2.12, 4, 5 (including step 5b), 6 and 7. To meet the criterion, run section 5 on a 3-node kind cluster (v0.33.0, `kindest/node:v1.37.0`) with Helm v4.3.1 and replace the blocks. What was captured (REAL, Helm client only, 2026-10-28): the repo and search commands (including `--version '^6.0.0'` and `repo remove`, Helm 3.19.2), `show chart/values/readme/crds`, `pull --untar`, `template` (including `-s`), `install --dry-run=client` (Helm 4), the three `chart not found` messages, the `--atomic`, `--force` and bare `--dry-run` deprecation messages, the Helm 3 `cluster unreachable` message for `--dry-run=client`, `search hub`, an OCI `show chart`, and the `--help` flag lists of both versions.
+
+Items not confirmed on a live v1.37 cluster:
+
 1. Helm version used by the exam: **UNVERIFIED** (E23). Whether a `helm` binary is on the exam host: **UNVERIFIED** (E9 lists kubectl, yq, curl, wget, man).
 2. Helm 4.3.1 against a v1.37 cluster: all install, upgrade, rollback and uninstall output, and the column layout of `helm list` and `helm history`.
 3. The text `Rollback was a success! Happy Helming!`, `Release "web" has been upgraded. Happy Helming!`, `release "web" uninstalled`, and the descriptions `Install complete`, `Upgrade complete`, `Rollback to N` in Helm 4.3.1.
@@ -841,6 +1029,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.20 (T3.20-kustomize.md) — 9 expected-output blocks
 **Known limitation.** The machine-wide kind lock (`/tmp/kind-lab.lock`, created the previous day) was still held after the full 20-minute wait, so no kind cluster could be created for this lesson. Everything that only needs `kubectl kustomize` or the standalone `kustomize` binary was run for real: both overlays' rendered output (the "real rendered output of both overlays" criterion is met), the version check, every error message in section 6 that comes from a build, the deprecation warnings, the generator hashes, the patch and target behaviour, the labels table, the `kustomize edit` results, the drill answers 1-8, and the Lab A, B and C file sets (set up in a scratch directory and rendered). What is **not** met is real output from a live cluster: `apply`, `diff -k`, `get`, `delete -k`, rollout behaviour and the immutable-selector error. To meet it, run section 5 and the three labs on a 3-node kind cluster (`kindest/node:v1.37.0`) and replace each block below.
+
+Blocks labelled `EXPECTED OUTPUT (not captured)`, to replace with real output:
+
 1. Section 5 step 4: `k diff -k overlays/prod` (unified diff format and header text depend on the diff tool).
 2. Section 5 step 4: `k apply -k` lines and `rollout status` lines.
 3. Section 5 step 5: `get deploy,svc,pods -L env`, the Service selector columns, and `get endpointslices`.
@@ -848,12 +1039,18 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 5. Section 5 step 7: the exact text of the immutable-selector error (only `field is immutable` and the `spec.selector: Invalid value` prefix are claimed; the middle is shortened with `...`), and whether `kubectl` prints anything else around it.
 6. Section 5 step 7 fix and step 8 `delete -k` lines, including the wording after `deleted` (for example `from lab-t320 namespace`), which depends on the kubectl version.
 7. Section 6, mistake 2: the four apply lines (`configmap/site-config configured`, `deployment.apps/site unchanged`, ...).
+
+Claims not run against a cluster (the commands are written, but only their render-only parts were run):
+
 8. Lab A verification (replica counts, images, Service selector, `prod-diff.txt` contains `name: prd-api`). Locally verified: the overlays render with the expected values and `out/staging.yaml` and `out/prod.yaml` differ.
 9. Lab B: that the second apply creates a new ReplicaSet, that at least 3 ReplicaSets exist at the end, that `printenv LOG_LEVEL` still prints `debug` after the hash is disabled and `LOG_LEVEL` is changed to `error`, and that `k delete -k .` leaves the old hashed ConfigMaps behind (so the cleanup deletes `cm,secret --all`). Locally verified: the hashed names change when `index.html` or `app.env` changes (`site-html-g4hfg89mtf` to `site-html-k6df5gh6k7`, `site-config-gdkh4k77cd` to `site-config-52chbk6fhd`), and the Deployment's references follow.
 10. Lab C: `readyReplicas` equals 3 after apply. Locally verified: the exact error sequence (bad path, then `no matches for Id Deployment.v1.apps/prod-orders.[noNs]`, then two warnings) and that the corrected overlay builds with an empty stderr.
 11. Drill 9 (`k apply -k d2`, `k delete -k d2`).
 12. `k diff` exit codes (0 / 1 / above 1) come from kubectl's own help text, not from a run in this session.
 13. The message `namespaces "lab-t320" not found` (section 2.5) when the namespace is missing: standard API wording, not captured.
+
+Version-dependent and exam facts:
+
 14. Embedded Kustomize in kubectl 1.37.1 is v5.8.1 (confirmed with `kubectl version --client`). The standalone binary used here is v5.8.3 (confirmed with `kustomize version`). The kind node image is not involved.
 15. Deprecation warnings for `commonLabels`, `patchesStrategicMerge` and `patchesJson6902` were confirmed on both embedded v5.8.1 and standalone v5.8.3. `commonAnnotations` printed no warning on v5.8.1.
 16. Whether the exam hosts have a standalone `kustomize` binary, and which Kustomize version the exam uses: UNVERIFIED ([E23](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad), [E9](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad)).
@@ -862,11 +1059,15 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.21 (T3.21-understand-api-depreciations-api-deprecations-and.md) — 16 expected-output blocks
 **Known limitation.** The machine that produced this lesson has no running cluster. I downloaded the kind v0.33.0 binary and tried to create a 3-node cluster named `k-t321` with the pinned `kindest/node:v1.37.0` image, but the machine-wide lock `/tmp/kind-lab.lock` was held by a directory dated 2026-10-27 21:09 (stale; other `k-t*` clusters were also still running). I waited the 20 minutes the conventions allow, then labelled all cluster output as expected instead of creating a second cluster. The unmet done criterion is "Real deprecation warning output captured" from a live apiserver: the only warning text in this lesson is quoted from the Kubernetes release blog, not captured by me. To meet it, run the worked example on a 3-node kind cluster (v1.37.0) and replace the `EXPECTED` blocks with real output.
+
+Real output captured in this lesson (no cluster needed):
 - `kubectl-convert` v1.37.0 (darwin/arm64, from `dl.k8s.io`): Deployment, Ingress and wrong-group conversions (2.7); the HPA decode failure (row 5); the `networking.Ingress is not suitable` message.
 - `kubectl` v1.37.1 client: `error: unknown command "convert" for "kubectl"` (row 2).
 - `kubectl` v1.37.1 client: the `Flag --cpu-percent has been deprecated, Use --cpu ...` warning of `k autoscale` (4.1).
 - `yq` v4.54.1 one-liners in 4.2 to 4.4 and the labs.
 - Facts checked from the official site source on 2026-10-28: install steps for the plugin, the deprecation policy rules, the migration guide contents, the release blog statements in 2.9, and the Storage Version Migration task page. The HTTP checks of `dl.k8s.io/release/v1.37.1/bin/{linux,darwin}/{amd64,arm64}/kubectl-convert` all returned 200, and `stable.txt` returned `v1.37.1`.
+
+Items to confirm on a live v1.37 cluster (`EXPECTED OUTPUT (not captured)` unless stated):
 1. Worked example step 1: `k api-versions` output and that no `extensions` and no `networking.k8s.io/v1beta1` group appears; `k version` server value.
 2. Worked example step 2 and row 1: exact text of the "resource mapping not found ... no matches for kind" error for a removed Ingress and Deployment.
 3. Worked example step 3: output of `k api-resources | grep -i ingress` and `k explain ingress.spec.rules.http.paths.backend` (layout of GROUP/KIND/VERSION and field list).
@@ -883,20 +1084,13 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 14. 2.9: that CoreDNS keeps the Service name `kube-dns` in v1.37 (stated in general terms, not confirmed here); whether `k run -f` already prints a deprecation warning on kubectl v1.37.1 (the release blog says the flag "is being deprecated").
 15. 2.10: that `k explain` shows the word DEPRECATED for `service.spec.externalIPs` in v1.37.
 16. Whether `kubectl-convert` can be downloaded on the exam host: UNVERIFIED (the exam hosts list kubectl, yq, curl, wget, man per E9; network access to `dl.k8s.io` is not stated).
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (levels and policy 2.2/2.3; warnings 2.4; api-versions/api-resources/explain 2.5; migration guide 2.6; convert plugin install and use 2.7; manual migration incl. Ingress pathType/backend 2.8 and 4.3; current deprecations 1.33-1.37 2.9; field vs API level 2.10; metric 2.12; storage version migration 2.13)
-- [x] Every "Common mistake" from the entry appears in section 6 (rows 1, 2 and 3; rows 4 to 8 are extras)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images (the "old" manifests are deliberately removed APIs and are labelled as not applying; I could not run `apply` without a cluster, see section 11)
-- [ ] Every "Done criteria" item from the entry is met:
-  - [ ] Real deprecation warning output captured (NOT met: no live cluster; the Endpoints warning is quoted from the v1.33 blog and labelled EXPECTED; limitation stated at the top of section 11)
-  - [x] Covers the 1.33-1.37 deprecations with release-blog citations (2.9)
-  - [x] Every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+
+Self-check:
 
 ### T3.22 (T3.22-utilize-container-logs.md) — 0 expected-output blocks
 **Status of the done criteria.** Everything in this lesson that runs on Kubernetes was run on a 3-node kind cluster (kind v0.33.0, node image `kindest/node:v1.37.0`, kubelet v1.37.0, containerd v2.3.4, client kubectl v1.37.1) with the default kindnet network plugin instead of Calico (no NetworkPolicy is used). The crash-loop `--previous` output, the sidecar lab and the three labs' verification commands were executed. The following were not tested or are only partly tested:
+
 - **kubeadm nodes.** The kubelet defaults (`containerLogMaxSize: 10Mi`, `containerLogMaxFiles: 5`, monitor interval `10s`) were read from the kubelet v1.37.0 of the kind worker through `/proxy/configz`. A kubeadm node is expected to give the same values unless its kubelet config sets them; not checked. `ssh <node>`, `sudo -i` and reading `/var/log/pods` over SSH on VMs were not run (kind nodes were entered with `docker exec`).
 - **Why `-p` fails with `unable to retrieve container logs`.** I observed the symptom many times and saw with `crictl ps -a` that only the latest dead container of the Pod existed. The explanation (the kubelet keeps one dead container per container name and removes older ones with their logs) matches this, but I did not read the kubelet source or logs to confirm it. Timing differs per run: in other runs `-p` still worked in the `Error` state.
 - **Restart timing.** On this cluster a failing container was restarted much sooner than the classic 10 s, 20 s, 40 s back-off, and `STATUS` alternated between `Running`, `Error` and `CrashLoopBackOff`. The exact back-off in v1.37 was not looked up; the lab commands do not depend on it (they loop until the right moment).
@@ -912,6 +1106,7 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T3.23 (T3.23-use-built-in-cli-tools-to.md) — 0 expected-output blocks
 **Known limitation.** The criteria "real top output for Pods and nodes" and "answer-file one-liners verified" are met on a real kind cluster (kind v0.33.0, `kindest/node:v1.37.0`, 1 control plane + 2 workers, kubectl v1.37.1, metrics-server v0.9.0). Parts that were not met or were run in a different form, and what is needed to meet them (a `lab` cluster created by `env/kind-up.sh`, i.e. Calico instead of kindnet, and a Linux shell):
+
 - The capture cluster used kind's default CNI (kindnet) and a cluster named `k-t323`, not `env/kind-up.sh` with Calico. Not expected to change anything for this topic. Re-run section 5 on `lab` to confirm.
 - The labs were run with a scratch `HOME` (so `~/lab/t323` was a temporary folder) on a macOS host with Docker; the shell and `awk`/`head` were the macOS ones. The text tools `cut`, `tac`, `head`, `awk` were additionally run in a `busybox:1.36` container (REAL OUTPUT (Docker busybox)); GNU versions on an Ubuntu host were not run.
 - Lab C verification lines OK3, OK4 and OK5 were not run as written. The underlying data (args JSON, APIService status, node count) was captured, but not these exact `grep` pipelines.
@@ -924,17 +1119,13 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - An `OOMKilled` / exit code 137 example (section 2.8) is described in text only; it was not reproduced in this lesson (see T3.05 for the memory-limit behavior).
 - Later metrics-server releases may register `v1.metrics.k8s.io`. Only v0.9.0 was tested. The blog states implementations "should serve both v1 and v1beta1" during the transition; the HPA support statement ("only v1beta1 in v1.37") comes from the same blog post and was not tested beyond the lab B HPA working on a v1beta1-only server.
 - Kubernetes docs claims (metrics-server fetches `/metrics/resource` since v0.6.0; CPU is an average over `window`; memory is the working set) were read from the pipeline page and not independently measured.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (metrics-server role and API: 2.2, 2.3; `top pods` flags and `top nodes`: 2.4; raw API: 2.5; `get -w`, `--watch-only`, `-o wide`, status columns: 2.7; `describe`: 2.8; events: 2.8; `rollout status`: 2.9; restart counts and `--sort-by`: 2.10; answer file: 2.11, 4.1; limits of `top`: 2.6)
-- [x] Every "Common mistake" from the entry appears in section 6 (`Metrics API not available`; `<unknown>` / not available yet for new Pods; header in answer file), plus extra rows
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no `:latest` images (HPA YAML flagged as not applied in section 11)
-- [x] Every "Done criteria" item from the entry is met: [x] Real top output for Pods and nodes (sections 2.4, 5); [x] Answer-file one-liners verified (2.11, 5, Lab A, Lab B); [x] Every lab has setup, task, hints, collapsed solution, verification command and cleanup (section 7)
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real (labelled with their environment), or listed in section 11
 
-### T3.24 (T3.24-debugging-in-kubernetes.md) — 22 expected-output blocks
+
+Self-check:
+
+### T3.24 (T3.24-debugging-in-kubernetes.md) — 20 expected-output blocks
 **Known limitation.** The done criterion "verified on a real cluster" cannot be met on this machine — kind and multipass are not installed, so every cluster interaction is labelled `EXPECTED OUTPUT (not captured)`. Met fully: the `kubectl debug --help` flag list and `--profile` default/options, `kubectl explain` for `terminationMessagePath`/`terminationMessagePolicy`/`shareProcessNamespace`/`ephemeralContainers`, `port-forward --help`, `logs --previous` flag text, and `run --dry-run=client` YAML — all REAL OUTPUT from the local kubectl v1.37.2 client (no cluster involved). To meet the remaining criteria, re-run sections 5 and 7 on a 3-node kind cluster (`kindest/node:v1.37.0`, `env/kind-up.sh`).
+
 - The full `kubectl debug` flag list (section 2.11, including `--share-processes` defaulting to `true` for copies, `--keep-*` defaults and `--arguments-only`): verified from `kubectl debug --help` on client v1.37.2, not exercised against a server.
 - `--profile` options and default `general` in v1.37 (spec's verify item "debug profiles and flags in 1.37"): verified from client help v1.37.2. The docs page still describes a `legacy` profile and `legacy`-as-default for older versions; whether a 1.37 server accepts `--profile=legacy` was not tested. Profile effects (e.g. `sysadmin` → `privileged: true`) are from the docs, not re-verified.
 - Node debug Pod behaviour (spec's verify item "host mount path"): docs state the node root is mounted at `/host` and the Pod is `node-debugger-<node>-<rand>` in host IPC/network/PID namespaces, unprivileged. Not exercised on kind; verify `chroot /host` behaviour with and without `--profile=sysadmin`.
@@ -946,19 +1137,20 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - `kubectl debug -f` (debug a Pod defined in a file) is in the client help but was not exercised.
 - Whether `/tmp`-style write paths and `netstat` are present inside `busybox:1.36` under kind was not run (busybox ships `netstat`; `wget`/`nslookup` likewise).
 - Exam hosts' available tools: only kubectl, yq, curl, wget, man are listed ([E9](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad)); `awk`/`sed`/`tr`/`tac` presence is UNVERIFIED — the labs use them, and the solutions note `edit`-style alternatives where relevant.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (triage order 2.1; Pending/FailedScheduling 2.3; ContainerCreating 2.4; CrashLoopBackOff 2.5; ImagePullBackOff/CreateContainerConfigError/RunContainerError/Completed 2.6; ephemeral `debug --target` 2.10; `--copy-to`/`--set-image`/`--share-processes` 2.11; `debug node/` + `/host` 2.13; profiles 2.12; `exec` env/files/DNS/connectivity 2.9; `port-forward` 2.14; `-o yaml` spec vs status + `explain` 2.15; termination messages 2.16; all key commands in 4.1)
-- [x] Every "Common mistake" from the entry appears in section 6 (distroless exec → ephemeral container; OOMKilled masquerading as CrashLoop; fixing the Pod not the Deployment; ephemeral containers can't be removed — plus four extra rows)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no `:latest` images (busybox:1.36, nginx:1.27, registry.k8s.io/pause:3.10)
-- [x] Every "Done criteria" item from the entry is met: [x] Decision tree covers every status listed (Pending, ContainerCreating, CrashLoopBackOff, ImagePullBackOff/ErrImagePull, CreateContainerConfigError, RunContainerError, Completed, Running-0/1, exec/debug); [x] each break-fix lab has a verified root cause and fix (Lab C: three faults with exact diagnosis path — cluster-verification pending per section 11); [x] every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real (kubectl v1.37.2 client outputs) or labelled "EXPECTED OUTPUT (not captured)" and listed in section 11
+
+
+Self-check:
 
 ### T4.06 (T4.06-manage-role-based-access-control-rbac.md) — 0 expected-output blocks
+Known limitation: the standard lab environment (`kind-lab` with Calico, installed by `env/kind-up.sh`) and kubeadm VMs were not used. All outputs in this lesson come from a temporary 3-node kind v0.33.0 cluster (`kindest/node:v1.37.0`, default CNI, cluster name `k-t406`) which was deleted afterwards. RBAC does not depend on the CNI, so this is unlikely to change anything. To fully meet the "done" criteria on the intended environment, re-run the labs on the `lab` kind cluster, and the CSR flow on a kubeadm 1.37 VM cluster (`cp1`, `w1`, `w2`) where the cluster entry is typically called `kubernetes` and the admin certificate group is `kubeadm:cluster-admins` (that group name was seen on kind too, via `k auth whoami` as admin).
+
+
 - Real `can-i` output for allowed and denied cases: met (sections 2.8, 5 and 6, all from the kind cluster).
 - User creation flow works end to end: met (CSR, approve, kubeconfig, Role, RoleBinding, test as Jane; section 5 and Lab A).
 - Every lab has setup, task, hints, collapsed solution, verification and cleanup: met (each verification was run and shows `ok` / `FAIL` lines).
+
+Items still unconfirmed or only taken from the docs:
+
 1. Default ClusterRoles in 1.37 (`k describe clusterrole edit`): **verified** on v1.37.0 (section 2.5). Re-check on the exam cluster, because the exam runs "approximately 4 to 8 weeks" after a release (E6), so its patch version may differ.
 2. Minimum CSR `expirationSeconds` of 600 seconds: taken from the CSR docs, not tested here. A signer may also shorten the requested lifetime. I used 86400.
 3. `resourceNames` cannot restrict `create`/`deletecollection`, and `list`/`watch` need a `metadata.name` field selector: stated from the RBAC docs. I verified only that plain `list` is denied for a role with `resourceNames` (section 2.3).
@@ -969,17 +1161,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 8. The number of kubeconfig contexts and exact cluster names in the exam: UNVERIFIED (E21).
 9. `curlimages/curl` is not used in this lesson, so no tag needs pinning. All images are `nginx:1.27`.
 10. YAML in section 4 was checked by applying the same objects on the kind cluster (`pod-ops.yaml`, the ServiceAccount binding, `agg.yaml`, the CSR). `node-reader.yaml`, `dev-edit.yaml` and the two-subject `pod-ops-binding.yaml` have the same shape as the imperative commands and YAML bindings that were run, but were not applied as files. Run `k apply -f` on them (with `--dry-run=server`) on a live cluster to confirm.
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [x] Every "Done criteria" item from the entry is met
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real (kind v0.33.0, v1.37.0) or labelled
+
+Self-check:
 
 ### T4.07 (T4.07-use-helm-and-kustomize-to-install.md) — 19 expected-output blocks
 **Known limitation.** The machine-wide kind lock `/tmp/kind-lab.lock` was held by other jobs for the whole 20-minute wait on 2026-10-28 (11:44 to 12:04), so no kind cluster was created, and `multipass` is not installed. Therefore the Done criterion "real `helm list` and Pod listings after install" and the "smoke tests prove the component works" criterion are **not met with real captured cluster output**. The lesson meets them with labelled `EXPECTED OUTPUT (not captured)` blocks. To meet them for real you need a 3-node kind cluster `lab` (kind v0.33.0, `kindest/node:v1.37.0`, Calico v3.33.0) with internet access, then re-run section 5 and the three labs and replace the blocks. This limitation is not a content defect.
+
 **What was verified for real** (no cluster needed, 2026-10-28):
+
 - Helm v4.3.1 (downloaded to a scratch folder) and Helm v3.19.2: `repo add/update`, `search repo --versions`, `show chart/values/crds`, `template`, `--include-crds`, schema error for `image.tga`, `install --dry-run=client` with no cluster, flag lists from `--help` (install, upgrade, rollback, uninstall, get, list, status).
 - Traefik chart 42.1.3: app v3.7.16, image `docker.io/traefik:v3.7.16`, `kubeVersion >=1.30.0-0`, 25 CRDs in `crds/`, 8 rendered kinds with the Gateway provider, Gateway `traefik-gateway` and GatewayClass `traefik` names independent of the release name, `service.type=Foo` and `ports.web.exposedPort=70000` pass schema and render.
 - Chart versions: metrics-server chart 3.14.0 (app 0.9.0), MetalLB 0.16.1 (13 CRDs in templates via a subchart, no keep annotation), cert-manager v1.21.3 (6 CRDs, `crds.enabled` default false, `crds.keep` default true), NGINX Gateway Fabric 2.8.0 and Envoy Gateway 1.9.3 (OCI, `show chart` and `show crds`).
@@ -988,7 +1177,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - Fix round 1, checked offline on 2026-10-28: `kubectl kustomize` of a local `base/` plus `overlay/` (`resources: ../base`) prints `1` for the overlay and `0` for the base; `helm template` with the pinned charts gave these names: cert-manager (release `cert-manager`) Deployments `cert-manager`, `cert-manager-cainjector`, `cert-manager-webhook` and 6 CRDs with `crds.enabled=true`; MetalLB (release `metallb`) `metallb-controller`, `metallb-speaker`, `metallb-frr-k8s`, `metallb-frr-k8s-statuscleaner`, CRD `ipaddresspools.metallb.io` and `l2advertisements.metallb.io` both `v1beta1`; NGINX Gateway Fabric Deployment `ngf-nginx-gateway-fabric` and GatewayClass `nginx`; Envoy Gateway Deployment `envoy-gateway` in `envoy-gateway-system`, no GatewayClass in the chart, the Gateway API `gatewayclasses` CRD inside its `crds/`, and the controller string `gateway.envoyproxy.io/gatewayclass-controller`; metrics-server chart 3.14.0 renders `--kubelet-insecure-tls` after the default args; Traefik chart renders a `GatewayClass` with `providers.kubernetesGateway.enabled=true` (1) and none with `false` (0). The downloaded local-path-provisioner v0.0.37 YAML has the namespace `local-path-storage`, the StorageClass `local-path` (provisioner `rancher.io/local-path`, `WaitForFirstConsumer`, `Delete`). Calico `tigerastatuses` CRD has the singular `tigerastatus`; `custom-resources.yaml` has an `Installation` with CIDR `192.168.0.0/16`.
 - URLs return HTTP 200: metrics-server `components.yaml` v0.9.0, Gateway API `standard-install.yaml` v1.6.3, local-path-provisioner v0.0.37 `local-path-storage.yaml`, Calico v3.33.0 `tigera-operator.yaml`, `operator-crds.yaml` and `custom-resources.yaml`.
 - `curlimages/curl:8.23.0` exists as a tag on Docker Hub (listing read 2026-10-28); pulling it on a node was not run.
+
 **Blocks labelled `EXPECTED OUTPUT (not captured)`, to confirm on a live v1.37 cluster:**
+
 1. Section 5 step 0: baseline output (`0` CRDs, APIService `NotFound`).
 2. Section 5 step 1: Gateway API CRD apply output, `condition met` lines, and the claim that `--server-side` applies the file cleanly.
 3. Section 5 step 3: `helm install` Helm 4 output header.
@@ -1003,9 +1194,11 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 12. Lab A, B and C verification lines, and the lab C claims: `helm install ... --set service.type=Foo` ends in `failed` with the API server rejecting the Service; `helm upgrade` with the corrected value works on that failed release in Helm 4.3.1; `helm list -n fix -q --deployed` prints exactly `gw`; the Deployment name `gw-traefik` and `readyReplicas` of 1.
 13. Lab B: `helm status edge -n edge` prints a line starting `STATUS: deployed`; GatewayClass `traefik` shows `Accepted True` with a `ClusterIP` Service; Deployment `edge-traefik` and Service `edge-traefik` (names computed from `helm template`, not from a live release).
 14. Section 2.6 runnable installs, all cluster-side results (the commands and object names were checked offline, see above): metrics-server through Helm 3.14.0 with `--set 'args={--kubelet-insecure-tls}'` ends with `AVAILABLE True`; Gateway API CRDs count of 10; NGINX Gateway Fabric 2.8.0 Pod Ready and GatewayClass `nginx` `Accepted True` (controller name read from `helm template`); Envoy Gateway 1.9.3 Deployment `envoy-gateway` rolls out, and a GatewayClass `eg` with controller `gateway.envoyproxy.io/gatewayclass-controller` becomes `Accepted True`; MetalLB 0.16.1 Pods (controller, speakers, frr-k8s parts), pool and `L2Advertisement` accepted, a `LoadBalancer` Service gets an address from the pool, the wording of a possible webhook error right after install, and `k get crd | grep -c metallb.io` printing `0` after uninstall; local-path-provisioner v0.0.37 on VMs (PVC `Pending` then `Bound`, `cat /data/f` prints `ok`) and the claim that kind ships its own provisioner in `local-path-storage` with the StorageClass `standard`; cert-manager v1.21.3 with `crds.enabled=true` (3 Pods Ready, 6 CRDs, a self-signed `Certificate` becomes `Ready`, the Secret `smoke-tls` survives its Certificate, the 6 CRDs survive uninstall); Calico v3.33.0 operator install on a CNI-less cluster (`k get tigerastatus`, nodes `Ready`).
+
 **Other version-dependent claims not confirmed on a live cluster:**
+
 - Helm version in the exam: UNVERIFIED (research summary E23). Whether the `helm` and `kustomize` binaries exist on the exam hosts: UNVERIFIED (E9 lists only `kubectl`, `yq`, `curl`, `wget`, `man`). Whether the exam hosts have internet access: UNVERIFIED.
-- Helm 3 behaviour for `--atomic`, `--wait`, `helm list` default and `--reset-then-reuse-values` is taken from [T3.19](../part3-ckad/T3.19-use-helm-to-deploy-existing-packages.md) section 2.2 and Helm v3.19.2/v4.3.1 `--help`, not from live installs.
+- Helm 3 behaviour for `--atomic`, `--wait`, `helm list` default and `--reset-then-reuse-values` is taken from [T3.19](part3-ckad/T3.19-use-helm-to-deploy-existing-packages.md) section 2.2 and Helm v3.19.2/v4.3.1 `--help`, not from live installs.
 - The statement that release names are limited to 53 characters is general Helm knowledge, not rechecked here. That release records are Secrets `sh.helm.release.v1.<release>.v<revision>` is carried from T3.19.
 - local-path-provisioner v0.0.37: the downloaded YAML was read (names above) but never applied.
 - The Calico operator install order (`operator-crds.yaml`, `tigera-operator.yaml`, `custom-resources.yaml`) is inferred from the file contents of v3.33.0; the vendor's install page was not read for this lesson.
@@ -1015,6 +1208,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.08 (T4.08-understand-crds-install-and-configure-operators.md) — 7 expected-output blocks
 **Known limitation.** The lesson was written on a machine without the `lab` kind cluster, but with Docker, so I created a temporary kind v0.33.0 cluster (`k-t408`, node image `kindest/node:v1.37.0` pinned by digest, 1 control plane + 2 workers, default kindnet CNI) and captured real output there. All "Done criteria" that need a live cluster (real CR status conditions, the break-fix webhook error text) are therefore met with real output. The remaining gaps are: the capture used **Helm v3.19.2**, not the pinned v4.3.1; the CNI was kindnet, not Calico; and some lab verification lines were traced from real output but not executed as written (listed below). To close the gaps, run the lessons on the `lab` cluster with `env/kind-up.sh` and `env/kind-addons.sh helm`. The temporary cluster was deleted and the machine-wide kind lock released.
+
+Items not confirmed on a live v1.37 cluster with Helm v4.3.1, or not run at all:
+
 1. **Helm v4.3.1 behaviour.** All Helm output was produced by Helm v3.19.2. Message wording, the default of `--wait`, server-side apply for installs in v4, and the failure text `INSTALLATION FAILED: failed post-install: 1 error occurred: * timed out waiting for the condition` should be re-checked on v4.3.1.
 2. **`helm upgrade` without values (section 6.5).** In one Helm v3.19.2 test a bare upgrade kept `crds.enabled: true`, unexplained. Not tested on Helm v4. The lesson tells you to repeat the value.
 3. **cert-manager chart values.** Confirmed on chart v1.21.3: `crds.enabled` defaults to `false`, `crds.keep` to `true`, `installCRDs` is deprecated and still present. Re-check when you use a newer chart.
@@ -1030,16 +1226,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 13. **Exam hosts.** Whether `helm`, internet access, or `openssl` exist on the exam hosts is UNVERIFIED (E9 lists kubectl, yq, curl, wget, man; E23 unverified).
 14. **Leader-election delay.** "About 30 seconds" and "about 10 seconds" are from single runs on a small cluster, not guaranteed values.
 15. **Calico.** The lab environment uses Calico; the capture used kindnet. Nothing in this lesson depends on it, but the outputs were not captured with Calico.
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [x] Every "Done criteria" item from the entry is met: real CR status conditions shown [x]; break-fix shows the webhook error text [x]; every lab has setup, task, hints, collapsed solution, verification command and cleanup [x]
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+Self-check:
 
 ### T4.09 (T4.09-application-deployments-rolling-updates-and-rollbacks.md) — 15 expected-output blocks
 **Known limitation.** This lesson was written without a live cluster. The author waited 20 minutes for the machine-wide kind lock (the lock stayed taken by other writers), then gave up as the conventions require. Therefore the done criterion "Real rollout history for DS and STS" is **not met**: every output block is `EXPECTED OUTPUT (not captured)`, and the fact the entry asks to verify (DaemonSet `maxSurge` in v1.37) was not confirmed live. To meet them, run the lesson on a 3-node kind cluster (`kindest/node:v1.37.0`, `env/kind-up.sh`), replace each expected block with the real one, and tick the items below. The scripts in sections 4, 5 and 7 were traced by hand (names, namespaces, selectors) but never executed.
+
+Version-dependent facts and unconfirmed behaviours:
+
 1. **DaemonSet `maxSurge` in v1.37** (required by the entry). Expected: present and working (stable since v1.25). Check: `k explain ds.spec.updateStrategy.rollingUpdate.maxSurge`, then section 5 step 6 (new Pod Ready before the old Pod terminates).
 2. **StatefulSet `rollingUpdate.maxUnavailable`**: stage and feature gate in v1.37. Check: `k explain sts.spec.updateStrategy.rollingUpdate.maxUnavailable`.
 3. **`--record` flag**: whether it still exists in kubectl v1.37 (`k set image --help | grep -i record`).
@@ -1067,9 +1261,15 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.11 (T4.11-configure-workload-autoscaling.md) — 2 expected-output blocks
 **Known limitation.** Most outputs in this lesson are real (REAL OUTPUT, kind v0.33.0, `kindest/node:v1.37.0`, kubectl 1.37.1, metrics-server v0.9.0). The captures were taken on a cluster with kind's default CNI (kindnet), not the Calico setup of `env/kind-up.sh`. No block is labelled `EXPECTED OUTPUT (not captured)`. The items below are the claims and procedures I did not run or confirm on a live v1.37 cluster; a re-run of every lab as written on the standard `lab` cluster (3-node kind with Calico) is still needed to close them.
+
+Facts the entry asked me to verify, and the result:
+
 - `kubectl autoscale` flag names in 1.37: verified on a real v1.37.1 client. `--cpu` (percent or quantity) and `--memory` are current. `--cpu-percent` is deprecated and still works (warning text captured in 2.5).
 - Scale to zero feature gate: `kubernetes_feature_enabled{name="HPAScaleToZero",stage="BETA"} 1` on the live API server (beta, on by default). The API rejection without an Object/External metric was captured.
 - Configurable tolerance field name: `spec.behavior.scaleUp.tolerance` and `spec.behavior.scaleDown.tolerance` (`k explain` confirmed). The gate `HPAConfigurableTolerance` was on. "Stable in v1.37" is from the HPA docs page text, not from a gate stage I could read (the metrics endpoint showed an empty `stage` label for it).
+
+Not confirmed or not run:
+
 1. The minimal HPA YAML in section 4.2 (the "exam-minimal" one) was not applied. It is a strict subset of the full file, which was applied successfully.
 2. The ContainerResource / Pods / Object / External example was checked only with `k apply --dry-run=server` (schema and validation). No metrics adapter was installed, so real scaling on those metrics is untested. Scaling to zero and back with an External metric was not tested.
 3. Flapping: not reproduced. The symptom row in section 6 and the advice come from the documented behavior.
@@ -1084,44 +1284,23 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.12 (T4.12-primitives-for-robust-self-healing-application.md) — 7 expected-output blocks
 **Known limitation.** The outputs in this lesson were captured on a 3-node kind cluster (kind v0.33.0, `kindest/node:v1.37.0`), not on kubeadm VMs, and the cluster used kind's default CNI instead of Calico. The commands that stop or kill things (`docker stop`, `docker exec ... crictl`) are kind-specific; the same behaviour on kubeadm VMs (stopping a VM, `ssh` + `crictl`) was not captured. To meet that, run section 5 on the `vms` environment (3 Ubuntu VMs with kubeadm 1.37) and replace the docker commands with `ssh <node>` + `sudo -i`.
+
+Version-dependent facts that **were** confirmed on the live v1.37.0 cluster:
+
 - Default `tolerationSeconds` for `node.kubernetes.io/not-ready` and `unreachable` is 300 (read from a new Pod's spec).
 - `unhealthyPodEvictionPolicy` accepts `AlwaysAllow` and `IfHealthyBudget`; when unset the stored PDB has no value and the behaviour is `IfHealthyBudget` (from `k explain`, and observed with the `sick` Deployment).
 - `lifecycle.preStop.sleep` exists and works in v1.37; `restartPolicyRules` exists in `k explain` (not exercised).
 - `nodeTaintsPolicy` default (`Ignore`) behaves as described: the control plane counted as an empty domain.
-- [ ] The container restart back-off start (10 s), its doubling, the cap (5 minutes) and the reset after 10 minutes of running are from the docs. What was observed: first restart at once, then gaps of about 14, 21 and 47 s.
-- [ ] The node-monitor grace period default (`--node-monitor-grace-period` on kube-controller-manager). The node became `NotReady` 40 to 51 s after the stop in my run, which fits 50 s but was not read from the flag.
-- [ ] That percentage values in `minAvailable`/`maxUnavailable` round up, and that `maxUnavailable` and percentages need a controller with a scale subresource (stated in 2.5 from https://kubernetes.io/docs/tasks/run-application/configure-pdb/).
-- [ ] That `DefaultTolerationSeconds` adds the 300 s toleration per key (stated in 2.8 from the docs). Only the case of a Pod with no tolerations at all was observed.
-- [ ] That an empty PDB `selector: {}` matches every Pod in the namespace (policy/v1 behaviour from the docs).
-- [ ] The exact error when two PDBs select the same Pod (only the "one PDB per Pod" rule is cited from the docs).
-- [ ] That preemption honors a PDB only on a best-effort basis (stated in 2.7 from the docs; the preemption demo had no PDB).
-- [ ] `nodeAffinityPolicy` default `Honor`, and the `minDomains`/`matchLabelKeys` descriptions (from the docs; not exercised).
-- [ ] The `node.kubernetes.io/out-of-service` taint behaviour for non-graceful node shutdown (mentioned only).
-- [ ] The built-in priority class names and values were read from the cluster (verified); the user class limit (values up to and including 1,000,000,000) is from the docs.
-- [ ] Speed-drill answers (4.4) were not replayed as written, except for the individual commands `k create pdb`, `k patch` of probes/spread/tolerations/preStop, `k create pc` and `k drain`, which ran in other forms. The `k apply --dry-run=server` of the PDB with `unhealthyPodEvictionPolicy` was not run.
-- [ ] Lab 7.1 (Easy): the verification commands were not run as a script; the individual steps (delete, `crictl stop`, restart count, bare Pod) were.
-- [ ] Lab 7.2 (Medium): the recorder, drain and blocked-drain steps ran; the exact `blocked.txt` capture and the verification lines were not replayed.
-- [ ] Lab 7.3 (Break-fix): `break.sh` and the fix in `shop-fixed.yaml` ran and gave `ALLOWED DISRUPTIONS 1`, 2 nodes, probes present; the drain of the fixed app with `shop-ready.txt` was not replayed (a similar drain on `web` was).
-- [ ] Section 5: the sample outputs of steps 1 to 6 come from different runs, so names and ages do not line up from block to block. The step order in the text (drain, uncordon without rebalancing, stop the node that holds all Pods) was fixed in the review round and was not replayed as one sequence.
-- [ ] Section 5 step 7 (rebalance with `rollout restart`, stop a worker with a 2 + 1 spread, the EndpointSlice never empties) is EXPECTED OUTPUT (not captured).
-- [ ] Section 2.2 manifests (`db`, `agent`, `flaky`) were written from the object definitions seen in the captures; the manifests were not re-applied as one file. The reason only one `agent` Pod appears in the capture was not recorded.
-- [ ] Section 2.3 `restartPolicy` examples `once` (Never) and `onfail` (OnFailure) and their output are EXPECTED OUTPUT (not captured).
-- [ ] Section 2.6 `required` anti-affinity manifest (the stanza was written after the capture), the `preferred` form (3 Pods Running) and the 2.7 `preemptionPolicy: Never` example are EXPECTED OUTPUT (not captured). The 2.7 manifests (`low-pod`, `high-pod`) are generated from 60% of the node's allocatable CPU; the capture used a 12-CPU node.
-- [ ] Section 2.8 `fast.yaml` was reconstructed from the description of the capture (4 replicas, both tolerations 20 s).
-- [ ] Section 2.10: that deleting an orphaned ReplicaSet with `--cascade=orphan` leaves its Pods with no controller follows from the owner reference mechanism and was not run.
-- [ ] Lab 7.1 verification changed to an exact count (`grep -cx 1`); lab 7.2 task part 2 and lab 7.3 task, hint, solution (`rollout restart` after the proof drain) and verification were changed in the review round and not replayed.
-- [ ] The link to T4.13 (`../part4-cka/T4.13-configure-pod-admission-and-scheduling-limits.md`) is required by the entry. The T4.13 file did not exist when this lesson was written; check the slug against it once it is written.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (controllers 2.2; restartPolicy and backoff 2.3; probes 2.4; PDB with minAvailable/maxUnavailable/selector/unhealthyPodEvictionPolicy and drain/eviction effect 2.5; replicas, anti-affinity, topologySpreadConstraints 2.6; PriorityClass and preemption 2.7; node failure taints and tolerationSeconds 300 in 2.8; graceful termination and preStop 2.9; owner references and GC 2.10; checking resilience 2.11)
-- [x] Every "Common mistake" from the entry appears in section 6 (drain blocked, all replicas on one node, 5-minute move)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification and cleanup
-- [x] All YAML is complete and valid for v1.37, no `:latest` images (YAML fragments in 4.3 are labelled as fragments)
-- [x] Done criteria: real drain output blocked by a PDB is in 2.5 [x]; failure matrix verified by experiment is in section 3 [x]; every lab has setup, task, hints, collapsed solution, verification command and cleanup [x]
-- [x] No exam fact without a source URL; unknowns are marked (section 11)
-- [x] Output blocks are real (labelled with the kind environment) or described as not replayed in section 11
+
+Not confirmed, or taken from the documentation and not tested here:
+
+
+
+Self-check:
 
 ### T4.14 (T4.14-configure-volume-types-access-modes-and.md) — 13 expected-output blocks
 **Known limitation.** The "real PV phase transitions captured" done criterion is **not met**. This session had a kind v0.33.0 binary available, and a first cluster was created, but the machine-wide kind lock (`/tmp/kind-lab.lock`) was held by other writers. That cluster was created before it was clear that the lock was held by someone else, so it was deleted at once. After waiting about 20 minutes without winning the lock, every output block in this lesson was labelled `EXPECTED OUTPUT (not captured)`. To meet the criterion, run section 5 and the three labs on a 3-node kind cluster (kind v0.33.0, `kindest/node:v1.37.0`) or on 3 kubeadm VMs and replace the blocks with real output. Items 1 to 12 below were read from the docs or written from knowledge, not tested.
+
 1. Recycle status in 1.37: read on https://kubernetes.io/docs/concepts/storage/persistent-volumes/ (deprecated, only `nfs` and `hostPath` support recycling). Not tested on a cluster.
 2. ReadWriteOncePod with the lab drivers: the docs say CSI only (stable since v1.29). Not tested. Open question: what exactly happens on kind with an RWOP claim against a hostPath PV (section 2.4 Test C assumes the PV and claim bind and the scheduler keeps the second Pod `Pending`; also unknown is the exact `FailedScheduling` wording) or against the `standard` (local-path) class (rejected, Pending or accepted without enforcement). Also check whether `rancher.io/local-path` in the pinned kind image is a CSI driver (the lesson assumes it is not).
 3. Exact `k get pv` column layout in v1.37, including the `VOLUMEATTRIBUTESCLASS` column.
@@ -1137,6 +1316,7 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.15 (T4.15-manage-persistent-volumes-and-persistent-volume.md) — 13 expected-output blocks
 **Known limitation.** The "Real Pending/Bound outputs for each case" done criterion is **not met**: this machine has no kind, no multipass and no usable cluster, and the writer was instructed not to run cluster commands. Every output block is labelled `EXPECTED OUTPUT (not captured)`. To meet the criterion, run section 5 and the three labs on a 3-node kind cluster (kind v0.33.0, `kindest/node:v1.37.0`) or on the 3-VM kubeadm lab and replace the blocks with real output. Items below were read from docs or written from knowledge, not tested.
+
 1. Expansion support of the lab provisioner (spec verify item): on kind, `rancher.io/local-path` via a custom SC with `allowVolumeExpansion: true` — does `status.capacity` update to the new size, does an `Unused`-era condition or an `ExternalExpanding`/`Resizing`/`FileSystemResizePending`/`FileSystemResizeSuccessful` event appear, and what does `status.allocatedResourceStatuses.storage` show? Upstream reports suggest recent local-path versions accept the edit and update status (a no-op resize); older ones leave `status.capacity` unchanged. Also confirm: does kind v0.33.0's `standard` class carry `allowVolumeExpansion` (assumed absent per the open kind issue), and does local-path-provisioner v0.0.37's bundled `local-path` class on the VM lab ship `allowVolumeExpansion: true`?
 2. Condition names during resize (spec verify item): exact `status.conditions[*].type` and `reason` strings on a real CSI expansion (`Resizing`, `FileSystemResizePending`), the `ExternalExpanding` event text, and the `allocatedResourceStatuses` value list (`ControllerResizeInProgress`, `ControllerResizeFailed`, `NodeResizePending`, `NodeResizeInProgress`, `NodeResizeFailed`, possibly `ControllerResizeInfeasible` on newer minors).
 3. Exact rejection texts: resize of a non-expandable/static claim (`only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize` — wording from secondary sources), and the shrink rejection (`field can not be less than ...`).
@@ -1153,10 +1333,23 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.19 (T4.19-understand-and-use-coredns.md) — 26 expected-output blocks
 **Known limitation.** The lab conventions allow capturing real output from a 3-node kind cluster, but no kind cluster was created for this lesson. Therefore two done criteria are only partly met:
+
 - "Real dig outputs for A, SRV and headless records": the `dig` outputs for ClusterIP A, SRV, headless and per-Pod records in sections 4 and 5 are `EXPECTED OUTPUT (not captured)`. What is real: the search-list/`ndots` behaviour and `dig +search`/`nslookup` output (Docker, section 2.4 and 2.9), the default Corefile, Deployment, Service and kubelet defaults (real kubeadm 1.37 binary, sections 2.1, 2.2, 2.5), and the stub domain, `hosts`, `rewrite`, `log`, `reload`, `loop` and parse-error behaviour (real CoreDNS v1.14.6 in Docker, sections 2.6 to 2.10).
 - "Break-fix includes log output of the failure": included as REAL OUTPUT (Docker) with the exact Corefile of `break.sh` (`Corefile:12 - Error during parsing: Unknown directive 'promethius'`), plus the real upstream-timeout error line. The Pod-level `kubectl logs` and `get po` blocks are expected, not captured.
+
+To meet both fully, run the lab on a 3-node kind cluster (`env/kind-up.sh`) or 3 kubeadm VMs, and paste the outputs over the `EXPECTED OUTPUT` blocks.
+
 **Checked on a real binary (not a live cluster):**
+
+| Item | Result | Source |
+|---|---|---|
+| Default Corefile shipped by kubeadm 1.37 | As printed in section 2.2: `errors`, `health { lameduck 5s }`, `ready`, `kubernetes cluster.local in-addr.arpa ip6.arpa { pods insecure; fallthrough in-addr.arpa ip6.arpa; ttl 30 }`, `prometheus :9153`, `forward . /etc/resolv.conf { max_concurrent 1000 }`, `cache 30 { disable success cluster.local; disable denial cluster.local }`, `loop`, `reload`, `loadbalance` | `kubeadm init phase addon coredns --print-manifest` with kubeadm v1.37.0 (Docker) |
+| CoreDNS version bundled with kubeadm 1.37 | `registry.k8s.io/coredns/coredns:v1.14.6` | `kubeadm config images list` and the printed Deployment, kubeadm v1.37.0 (Docker). The same command printed control-plane images `v1.37.1`, because it looks up the newest patch version online. |
+| `dnsutils` image tag | `registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3` pulled and run; manifest lists amd64, arm, arm64, ppc64le, s390x; contains `dig 9.9.5`, `nslookup`, `host` | `docker manifest inspect` and `docker run` |
+| Loop, parse error, reload failure, upstream timeout, `hosts` once per block, `hosts` without `fallthrough`, `rewrite name exact`, `name suffix`, `name regex`, `answer name`, longest-zone match, `log` per block, plugin order | Texts and behaviour as quoted in the lesson | CoreDNS v1.14.6 in Docker |
+
 **Not confirmed on a live v1.37 cluster (all `EXPECTED OUTPUT (not captured)` blocks and these claims):**
+
 1. Section 2.1 and 5 step 2: the `get deploy,po,svc,endpointslices` listing, Pod names, ages and the EndpointSlice name.
 2. Section 2.4: resolv.conf contents for each `dnsPolicy` (policies.yaml), the node resolv.conf on kind, and `custom-dns` resolv.conf (`options ndots:2 timeout:3`).
 3. Section 5 steps 3 to 6: `dig` A output for `web`, SRV, headless, per-Pod, dashed-Pod and PTR answers, the search-list lookup from another namespace, `pod "dns" deleted from default namespace` text (kubectl wording).
@@ -1172,20 +1365,15 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 13. NodeLocal DNSCache details (address `169.254.20.10`, DaemonSet name `node-local-dns`) are from memory of the docs.
 14. Section 5 step 11: the cluster output of the `rewrite` step (not captured). Section 2.6: `rewrite name prefix` and `name substring` did not change the query in the Docker test; the cause was not found, so their behaviour is UNVERIFIED.
 15. Exam facts used: duration and task count (2 hours, 15-20 tasks) and the tools on exam hosts come from the LF pages cited in section 4.3 and 8; whether `dig` or the dnsutils image is available in the exam is UNVERIFIED.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4
-- [x] Every "Common mistake" from the entry appears in section 6
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images
-- [ ] Every "Done criteria" item from the entry is met (one is not, by accepted limitation):
-  - [ ] Real dig outputs for A, SRV and headless records (NOT met with live-cluster output; labelled `EXPECTED OUTPUT (not captured)`; see section 11 Known limitation)
-  - [x] Break-fix includes log output of the failure (real CoreDNS message captured in Docker with the exact `break.sh` Corefile; Pod-level logs expected)
-  - [x] Every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real, or labelled "EXPECTED OUTPUT (not captured)"
+
+
+Self-check:
 
 ### T4.20 (T4.20-define-and-enforce-network-policies.md) — 3 expected-output blocks
 **Known limitation.** All captured output came from a 3-node kind cluster (kind v0.33.0, `kindest/node:v1.37.0`, Calico v3.33.0, Pod network `10.244.0.0/16` instead of the conventions' `192.168.0.0/16` because of the Docker subnet clash described at the top). The conventions ask for the cluster `lab` with `192.168.0.0/16`; the Pod subnet change does not alter any policy behaviour but means Pod IPs in the captures differ from a default setup. Nothing was run on kubeadm VMs. Items that need a different environment are listed below. Done criteria that need "real output" are met for kind; the VM variant would need three VMs with Calico v3.33.0.
+
+Items not confirmed on a live cluster:
+
 1. **A non-enforcing CNI (Flannel only).** The Flannel and "no policy engine" rows of the table in section 2.2 come from the documented model, not from a test. The block in section 2.2 labelled `EXPECTED OUTPUT (not captured)` (the probe printing `ok` after the deny) is the expected behaviour from the documented model, not a capture. It needs a cluster with a CNI that has no policy engine.
 2. **Enforcement on kubeadm VMs with Calico.** Calico was tested only on kind (iptables dataplane, IPIP/VXLAN settings of the standard manifest). Other dataplanes (eBPF), encapsulation modes, or a different Pod CIDR were not tried.
 3. **Cilium behaviour.** `CiliumNetworkPolicy` and Cilium's handling of `ipBlock`, `endPort` and named ports were not tested. The table in section 2.10 is awareness only.
@@ -1198,6 +1386,11 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.21 (T4.21-know-how-to-use-ingress-controllers.md) — 16 expected-output blocks
 **Known limitation.** The topic's done criterion "real curl output through the controller" is met only partly. A kind cluster was not available while I wrote this lesson (the machine-wide kind lock was held by other jobs for more than 20 minutes, so I did not start my own cluster). So every output from a live cluster below is labelled `EXPECTED OUTPUT (not captured)`, except the lines that I quote from the T3.13 capture (real kind v0.33.0, v1.37.0 output of the same Traefik chart 42.1.3, including real `404`/`503` curl output and Traefik log lines). To meet the criterion fully you need the 3-node kind cluster (`env/kind-up.sh`) and one run of section 5 and the three labs.
+
+What I did check for real: the Traefik chart contents with `helm template` (IngressClass defaults, Service type, ports, arguments, RBAC, hostPort, hostNetwork error, second-release class and filter arguments, 25 CRDs); `kubectl create ingress` YAML with the v1.37.1 client; `curl --resolve` behaviour and the `busybox:1.36` `httpd` and `curlimages/curl:8.11.1` images in Docker; the Kubernetes docs and blog pages (retirement, frozen API, default-class caution, multiple controllers); the GitHub `archived` flag of `kubernetes/ingress-nginx` and the latest `ingress2gateway` release tag.
+
+Items still to confirm on a live v1.37 cluster:
+
 1. Every `EXPECTED OUTPUT (not captured)` block in sections 5 and 7: Step 0 (MetalLB Pods), Step 1 (`<pending>` Service), Step 2 (RBAC `can-i` answers), Step 3 (pool and IP), Step 4 (Ingress ADDRESS), Step 5 (200/404 curls), Step 6 (`503` and `502` blocks), Step 7 (HTTPS subject), Step 9 (log line), and the verification blocks of the three labs.
 2. **`502 Bad Gateway` body and Traefik's log text** for a refused backend connection. I wrote the standard HTTP status and described the log line generally only.
 3. **Two-default rejection text.** The exact error message the API server prints when an Ingress without a class is created while two IngressClasses are default (docs state the behaviour, not captured).
@@ -1213,6 +1406,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.22 (T4.22-use-the-gateway-api-to-manage.md) — 5 expected-output blocks
 **Known limitation.** Most of this lesson was run on a real kind cluster (v0.33.0, `kindest/node:v1.37.0`, 1 control plane + 2 workers). It is not the `lab` cluster of the conventions: it used the default kindnet CNI instead of Calico, and Helm v3.19.2 instead of the pinned Helm v4.3.1. The entry's "or kubeadm VMs" variant was not used, the exam implementation is UNVERIFIED, and a few commands were written from tested building blocks without being run as written (listed below). To close the gaps you need the standard 3-node `lab` cluster from `env/kind-up.sh` (Calico, Helm 4.3.1) and an official statement of which Gateway implementation the exam uses.
+
+Unconfirmed or partly confirmed:
+
 1. **Exam implementation (UNVERIFIED).** Which Gateway controller and which GatewayClass name the exam cluster uses (research item E23). Whether the Gateway API CRDs are pre-installed on exam clusters (UNVERIFIED).
 2. **Helm 4.3.1.** All Helm commands ran with Helm v3.19.2. `helm upgrade --install ... --wait` should behave the same on v4.3.1; not tested.
 3. **Calico / `env/kind-up.sh` cluster.** Not tested. Gateway API does not use the CNI, but the output was not captured there.
@@ -1231,6 +1427,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.24 (T4.24-monitor-cluster-and-application-resource-usage.md) — 5 expected-output blocks
 **Known limitation.** No kubeadm VM was available on the capture machine (no multipass, no VMs). All cluster output in this lesson comes from a 3-node kind cluster. The done criteria "real top and describe-node outputs" and "pressure lab includes safe cleanup" are met on kind. What is not met is any evidence from a **kubeadm 1.37 VM** (Ubuntu, cgroup v2, real systemd, default kubelet config). To meet it you need 3 VMs (`cp1`, `w1`, `w2`) prepared by `env/vm-prereqs.sh`, or a fresh capture there. Reviewers should not raise this limitation alone as a major problem.
+
+Items checked, with what was and was not confirmed:
+
 1. **`evictionHard` defaults in v1.37.** Confirmed in the v1.37.0 source (`DefaultEvictionHard`: `memory.available` 100Mi, `nodefs.available` 10%, `nodefs.inodesFree` 5%, `imagefs.available` 15%, `imagefs.inodesFree` 5%) and on the node-pressure eviction docs page (same five, plus `memory.available<500Mi` for Windows). **Not observed on a live default kubelet**: the kind kubelet overrides them (three `0%` entries, no `memory.available`; observed live through `configz`). The comment in `types.go` lists only four defaults (it omits `imagefs.inodesFree`); the code and the docs page list five. I followed the code and the docs.
 2. **`metrics.k8s.io` served versions in v1.37.** Observed live with metrics-server v0.9.0: only `v1beta1` (`/v1/` returned `NotFound`). The docs page says the Metrics API is Stable since v1.37 and shows `/apis/metrics.k8s.io/v1/...`. Whether a newer metrics-server that registers `v1` exists, and whether it replaces `v1beta1`, was **not tested**.
 3. **kubeadm VM kubelet config.** The statement "a kubeadm kubelet file has no `evictionHard` key, so the five defaults apply" is from the docs and the code logic, not from a VM. EXPECTED OUTPUT (not captured), on a kubeadm node: `grep -n evict /var/lib/kubelet/config.yaml` prints nothing, and `configz` shows `"mergeDefaultEvictionSettings":false` with the default `evictionHard`.
@@ -1251,23 +1450,24 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 18. **Kubelet serving certificates.** The proper fix for the `--kubelet-insecure-tls` risk (`serverTLSBootstrap: true` plus approving the certificate requests) is written from the documentation and not tested. `kubeReserved`, `systemReserved` and `kernelMemcgNotification` field names and the default `false` are from the kubelet configuration reference and not tested on a node.
 19. **Pod garbage collection.** The flag name `--terminated-pod-gc-threshold` in section 2.7 is from memory; its default and exact behaviour were not checked. (This replaces the narrower wording in item 9.)
 20. **Pressure filter command.** `k describe nodes | grep -E '^Name:|MemoryPressure|DiskPressure|PIDPressure' | grep -E '^Name:|True'` (section 4.1 and drill 6) was traced against the captured `describe node` text (condition lines start with the type name and contain `False` or `True`) but not run as printed.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (metrics-server install/health and `metrics.k8s.io` versions 2.2; `top` flags 2.3; `describe node` 2.4; requests vs usage 2.5; node tools 2.6; eviction thresholds and evicted Pods 2.7; `/metrics/resource` and summary API 2.8; Prometheus awareness 2.9; answer files and awk aggregation 2.10 and 4)
-- [x] Every "Common mistake" from the entry appears in section 6 (top fails, 90% allocated vs low usage, evicted Pods piling up)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images (the kubelet fragment is labelled as a node file, not for `kubectl apply`)
-- [x] Done criteria: real `top` and `describe node` outputs (kind v0.33.0, v1.37.0) [x]; pressure lab has safe cleanup [x]; every lab has setup, task, hints, collapsed solution, verification command and cleanup [x]
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real (labelled `REAL OUTPUT (kind v0.33.0, v1.37.0)`) or labelled `EXPECTED OUTPUT (not captured)` and listed in section 11
+
+
+Self-check:
 
 ## kubeadm VM items
 
 ### T4.01 (T4.01-prepare-underlying-infrastructure-for-a-kubernetes.md) — 15 expected-output blocks
 **Known limitation.** This machine has no kind and no Multipass, so the criteria "script runs clean on fresh VMs and preflight passes (real output)" and "every VM output block is real" are **not fully met**. What was captured is real but comes from an Ubuntu 24.04 arm64 **container** (kubeadm, kubelet and crictl v1.37.x from `pkgs.k8s.io`; containerd v2.4.2 and v2.2.1; runc v1.5.2) with stubs for `modprobe`, `systemctl` and `swapoff`. To meet the criteria you need three Ubuntu LTS VMs (or one VM for Lab A), then run Lab A and Lab B and paste the real `verify.sh` and preflight output. The port table was checked against https://kubernetes.io/docs/reference/networking/ports-and-protocols/ (met).
+
+Things that were verified in the container (real, but a container, not a VM):
+
 - `kubeadm init phase preflight` check list and names for v1.37.1: `NumCPU`, `Port-6443`, `FileContent--proc-sys-net-ipv4-ip_forward`, `CRI`, `ContainerRuntimeVersion`, `IsPrivilegedUser`, `Hostname`, `Swap` (warning), `SystemVerification`.
 - containerd 2.x key paths and `version = 4` (v2.4.2) / `version = 3` (v2.2.1), `disabled_plugins = ["cri"]` rejected in 2.x, `unknown service runtime.v1.RuntimeService` with the CRI plugin disabled.
 - kubelet defaults: `--fail-swap-on` true, `--fail-cgroupv1` true; kubeadm writes `cgroupDriver: systemd`.
 - Package list and versions, `apt-mark hold`, the unit files, `kubeadm config validate` of the swap-tolerant config (`ok`).
+
+Items to confirm on a live v1.37 VM or cluster:
+
 1. Every block labelled `EXPECTED OUTPUT (not captured)`: `lsmod` output (2.4), `systemctl status kubelet` before init (2.12), `timedatectl` and `timedatectl show -p NTPSynchronized` (2.14), the swap fields in `/var/lib/kubelet/config.yaml` (2.6), all outputs in the worked example steps 0-7 (section 5), and the `verify.sh` outputs in the labs (section 7).
 2. The `sysctl --system` wording when `br_netfilter` is not loaded (`sysctl: cannot stat /proc/sys/net/bridge/...`): typical wording, not captured.
 3. The exact kubeadm error line for cgroup v1 (`[ERROR SystemVerification]: ...`). Only the message start ("cgroups v1 support is deprecated and will be removed in a future release. Please migrate to cgroups v2. To explicitly enable cgroups v1 support for kubelet v1.35 or newer, you must set the kubelet configuration option ...") was read from the binary; the container host was cgroup v2. The kubeadm severity (ERROR versus WARNING) for it is unconfirmed.
@@ -1287,25 +1487,29 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 17. Lab B: the `scp` and `ssh -n` flow, and the `nc` results for port 22 (succeeds) and 6443 (refused before init), were not run. `nc` is assumed present on the Ubuntu image.
 18. The time-sync fix commands in 2.14 (`timedatectl set-ntp true`, `chrony`) were not run.
 19. That systemd v256 and later ignore `systemd.unified_cgroup_hierarchy=1` is reported, not tested (2.7, section 6).
+
+Checklist of the Done criteria:
+
 - Script runs clean on fresh VMs and preflight passes (real output): **partly**. Syntax check and two idempotent runs with stubs, plus a clean preflight, were real in a container (labelled). VM run: not possible here (see Known limitation).
 - Port table verified against the docs page: met.
 - Every lab has setup, task, hints, collapsed solution, verification command and cleanup: met.
----
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (hardware/OS and identity 2.2; ports 2.3; modules 2.4 and sysctls 2.5; swap 2.6; cgroup v2 2.7; containerd 2.x install, config default, SystemdCgroup, sandbox image, restart 2.8; cgroup driver autodetect and the deprecated setting 2.9; crictl 2.10; repo, key, install, hold 2.11; `systemctl enable --now kubelet` 2.12; preflight 2.13; time sync and DNS/hosts 2.14; load balancer/VIP and T4.05 2.14)
-- [x] Every "Common mistake" from the entry appears in section 6 (ip_forward, kubelet crash loop, SystemdCgroup mismatch, cgroup v1 preflight)
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no :latest images (the kubeadm config passed `kubeadm config validate`; no container images are used in the labs)
-- [x] Every "Done criteria" item from the entry is met or its gap is stated in section 11 (VM-real output is the stated known limitation; port table verified; labs complete)
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real (labelled with the Docker environment) or labelled "EXPECTED OUTPUT (not captured)"
+
+
+Self-check:
 
 ### T4.02 (T4.02-create-and-manage-kubernetes-clusters-using.md) — 15 expected-output blocks
 **Known limitation.** This lesson was written on a machine with no kind and no Multipass, so no real 3-VM cluster was built. The done criteria "real kubeadm init output and node/Pod listings" and "join token lifecycle demonstrated on a live cluster" are therefore met only in part: the `kubeadm init` log, the certificates, the manifests, the ConfigMap, the token Secret and the join command are real output of kubeadm v1.37.1 from a `--dry-run` in a Docker container, but the node and Pod listings, the join output, the token expiry and the lab results are `EXPECTED OUTPUT (not captured)`. To meet the criteria fully, run the worked example (section 5) and the labs on three Ubuntu LTS VMs prepared with `env/vm-prereqs.sh` (or a 3-node kind cluster for the parts that do not need kubeadm itself), replace each expected block with the real one, and tick the items below.
+
+Verified in this lesson (real, on 2026-10-27, Docker, kubeadm v1.37.1 linux/arm64, `--dry-run`, not a VM):
+
 - Config API version is `kubeadm.k8s.io/v1beta4`; `v1beta3` is rejected; `extraArgs` is a list; `--config` cannot be mixed with `--pod-network-cidr`; the config in section 4.2 passes `kubeadm config validate`.
 - Phase list and order, `kubeadm config images list` (including `coredns v1.14.6`, `pause 3.10.2`, `etcd 3.7.0-0`), flags of `init`, `join`, `reset`, `token create`.
 - `super-admin.conf` is generated next to `admin.conf` on the `init` node; subjects `O=system:masters, CN=kubernetes-super-admin` and `O=kubeadm:cluster-admins, CN=kubernetes-admin`.
 - The CA hash computed with openssl equals the one kubeadm prints. `controlPlaneEndpoint` host is added to the API server SANs. `--upload-certs` prints a key and the "deleted in two hours" notice.
 - Calico v3.33.0: both `calico.yaml` and `tigera-operator.yaml` plus `custom-resources.yaml` exist at the tag; the manifest's `CALICO_IPV4POOL_CIDR` is commented out; the operator's default pool is `192.168.0.0/16`, `VXLANCrossSubnet`.
+
+Still to verify on a live cluster (each is an `EXPECTED OUTPUT (not captured)` block or an unconfirmed statement):
+
 1. Section 5 step 0: output of `systemctl is-active containerd`, `swapon --show`, `kubeadm version -o short` on the VMs.
 2. Section 5 step 1: `kubeadm config images pull` output lines (`[config/images] Pulled ...`).
 3. Section 5 step 2: the real `kubeadm init` run with flags only (the shown tail is from a dry run with a config file; the preflight lines and the exact join block of a flag-only run were not captured).
@@ -1328,6 +1532,21 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.03 (T4.03-understand-extension-interfaces-cni-csi-cri.md) — 12 expected-output blocks
 **Known limitation.** The machine this lesson was written on has no kind and no Multipass, so no cluster or VM command could be run. The Done criterion "Real node listings of net.d and opt/cni/bin" is therefore **not met with real output**: outputs O1-O9 below are labelled `EXPECTED OUTPUT (not captured)`. To meet it, run the worked example (section 5) on a 3-node kind cluster (`docker exec <node> ls /etc/cni/net.d /opt/cni/bin`) or on the 3 VMs, paste the real output, and delete the label.
+
+| Item | What to confirm on a live v1.37 cluster |
+|---|---|
+| O1 | `k get csidriver hostpath.csi.k8s.io -o yaml` field values of a real driver |
+| O2 | Node version string and `Ready` message wording (`KubeletReady`) |
+| O3 | Where the endpoint is stored for kubeadm 1.37: `kubeadm-flags.env`, `config.yaml`, or `/var/lib/kubelet/instance-config.yaml` (node-local CRI socket handling); socket path spelling |
+| O4 | **Calico v3.33.0 file names in `/etc/cni/net.d`** (`10-calico.conflist`, `calico-kubeconfig`?) and the exact content of `/opt/cni/bin` (kubernetes-cni package version) |
+| O5 | **`crictl info` JSON paths for containerd 2.x**: `.status.conditions`, `.config.cni` keys (`binDir` vs `binDirs`, `confDir`, `maxConfNum`, `confTemplate`, `ipPref`), and where the loaded network list appears (`.cniconfig`?) |
+| O6 | Pod IP range and `spec.overhead` copy |
+| O7 | `crictl pods` columns and `crictl inspectp` IP key; `cali...` device name |
+| O8 | Column set of `k get csinodes` and the `No resources found` message for kubectl 1.37; the name prefix (`csinode.storage.k8s.io/cp1`) and absence of a "No resources found" line when both types are queried in one command |
+| O9 | Exact sandbox error text for an unknown handler (`no runtime for "gvisor" is configured`) |
+
+Version-dependent statements in the text that were written from the specs and not confirmed:
+
 - containerd 2.x config section name `plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.<handler>` and `version = 3`.
 - containerd `bin_dir` vs `bin_dirs`, `conf_dir`, `max_conf_num` default 1, and whether an unparsable file is skipped or leaves `NetworkReady` false (the text says either may happen).
 - The PVC event text `Waiting for a volume to be created either by the external provisioner '<driver>' or manually by the system administrator. If volume creation is delayed, ...` (capitalisation, quotes, the trailing sentence); Lab A OK-6 matches it case-insensitively with a regex, so confirm the regex still matches.
@@ -1347,25 +1566,22 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 - Lab C: that a truncated `10-calico.conflist` makes `w1` `NotReady` within about a minute, and that deleting the `calico-node` Pod rewrites the file.
 - Lab B: that `k delete -f calico.yaml` completes without stuck finalizers, and that rebooting is enough to clear Calico's devices and rules.
 - Whether the exam allows downloading manifests with `curl` from outside the docs: UNVERIFIED.
----
+
+
 **Self-check**
-- [x] Every subtopic bullet from the entry appears in section 2 or 4 (CRI endpoint/services/crictl/RuntimeClass; CNI spec/paths/sorting/IPAM/chained; who calls CNI and NetworkReady; install/replace and podCIDR; CSI parts/sidecars/CSIDriver/CSINode; socket path and commands; migration; other extension points; diagnostics strings; node inspection commands)
-- [x] Every "Common mistake" from the entry appears in section 6 (NotReady, two ranges, PVC Pending), each with a reasoning path
-- [x] All 3 labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete and valid for v1.37; no `:latest` images (busybox:1.36, nginx:1.27)
-- [x] Done criteria, each listed:
-  - [ ] Real node listings of net.d and opt/cni/bin: NOT met with real output (accepted limitation; labelled expected, see section 11)
-  - [x] One diagram covering all 3 interfaces (section 3)
-  - [x] Every lab has setup, task, hints, collapsed solution, verification command and cleanup
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are labelled `EXPECTED OUTPUT (not captured)` and listed in section 11
 
 ### T4.04 (T4.04-manage-the-lifecycle-of-kubernetes-clusters.md) — 15 expected-output blocks
 **Known limitation (read this first).** No kind or Multipass was available when this lesson was written, so **nothing in this lesson was run on a live cluster**. Every output block is `EXPECTED OUTPUT (not captured)`, some reconstructed from memory of the tools' format. Two of the topic's done criteria are therefore **not met**: (1) real captured outputs of `kubeadm upgrade plan`, `kubeadm upgrade apply`, `etcdutl snapshot status`, `check-expiration` and the PDB drain message; (2) the runbook verified end to end on 1.36.5 to 1.37.1. They can only be met by running the lesson on the 3-VM lab and replacing every labelled block. Until then treat the lesson's command shapes as reliable and every output, version string and error wording as unconfirmed. Re-run on the 3-VM lab and replace the blocks.
+
+Facts the entry demanded be verified on a real cluster:
+
 1. `etcdctl` versus `etcdutl` subcommands in etcd 3.7: confirm `etcdutl snapshot status|restore` exist and work, and whether `etcdctl snapshot status|restore` still exist (deprecated) or were removed. The lesson uses `etcdutl` and `etcdctl snapshot save`.
 2. kubeadm 1.37 `upgrade plan` / `upgrade apply` output and preflight: the stage names, the table layout, CoreDNS and etcd target versions in 5.3 and 5.4 are shown from memory of the format, with placeholder versions. Capture real output.
 3. Default certificate lifetimes (leaf 1 year, CA 10 years) and that `kubeadm upgrade` renews certificates by default and honours `--certificate-renewal=false`: confirm on 1.37.
 4. Package version strings: confirm `1.36.5-*` and `1.37.1-*` resolve (full strings such as `1.37.1-1.1`) with `apt-cache madison kubeadm` on the v1.36 and v1.37 repositories, and that the sources file is still `/etc/apt/sources.list.d/kubernetes.list` in the VM prerequisites script.
+
+Other version-dependent or unconfirmed claims:
+
 5. `DefaultEtcdVersion = 3.7.0-0` in kubeadm 1.37 (from the research summary, taken from Kubernetes v1.37.1 source, not re-checked here), the exact etcd version kubeadm 1.36 deployed (written as `3.6.x`), and that `etcd.local.imageTag` and `--etcd-upgrade=false` still behave as described.
 6. Exact wording of error messages in section 6 (kubeadm version-skew FATAL text, drain refusal strings, PDB eviction message, `context deadline exceeded` and its TLS log lines, the apt held-package error).
 7. The claim that `kubeadm upgrade apply|node` regenerates `etcd.yaml` using `etcd.local.dataDir` and so reverts a hostPath edited by hand (2.8). Confirm by running an upgrade after a restore into a new directory.
@@ -1387,13 +1603,18 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 23. The etcd client install in 7.0: release asset name `etcd-v3.7.0-linux-<arch>.tar.gz`, the directory layout inside it, that it ships `etcdutl`, that the release page lists a checksum, and the `etcdctl version` / `etcdutl version` output layout.
 24. The sample `check-expiration` layout in 2.9 (row names, the second CA table, `364d`/`9y` residual format).
 25. That a default `etcdutl snapshot restore` stores member name `default` and peer URL `http://localhost:2380` (2.8).
----
 
 ### T4.05 (T4.05-implement-and-configure-a-highly-available.md) — 13 expected-output blocks
 **Known limitation.** This lesson was written without Multipass, KVM or kind. The done criteria "real etcd member list with 3 members" is met only for a **plain etcd 3.7.0 cluster in Docker** (section 2.3 and 2.8), not for a kubeadm stacked etcd on VMs; and "failover drill output captured" is met only for etcd (stop leader, stop a second member, quorum loss, restart, remove and re-add), not for the VIP, the Leases or `kubectl` through the VIP. To meet them fully you need 3 VMs for the control planes plus a worker (Lab A, then Lab B) and to paste the real output in place of the labelled blocks. The limitation is accepted by `00-conventions.md` section 10.
+
+What was verified for real (Docker, 2026-10-27, arm64):
+
 - kube-vip v1.3.1: image pulls, `version` prints `v1.3.1`, `manifest pod` generates the static Pod in section 4 (also with `--k8sConfigPath`, which changes only the hostPath). `kube-vip kubeadm init` output kept `admin.conf` as the hostPath.
 - kubeadm v1.37.1 `--dry-run`: `controlPlaneEndpoint` added to SANs, `certSANs` added, the printed join commands, the `kubeadm-certs` Secret and the `+2h` expiry of its owner token, the `--etcd-servers=https://127.0.0.1:2379` flag, the static Pod flags for etcd, the five kubeconfig `server:` lines, `kubeadm config validate` of both config files, `kubeadm reset` phases, `kubeadm join --help` flags and phases, and the strings in the binary for the expired-Secret message and the learner promotion.
 - etcd 3.7.0 (plain Docker): the tables and error texts in sections 2.3 and 2.8; the plain `endpoint status` field order and the table columns (2.8, Lab B); `etcdutl snapshot restore` with `--name/--initial-cluster/--initial-cluster-token/--initial-advertise-peer-urls` (three added members, new cluster ID) and its refusal to write into an existing directory; `--force-new-cluster` turning a restored three-member data directory into a one-member cluster that keeps its data across a restart without the flag; `etcdctl member list` timing out on a member restarted with 2 of 3 peers missing (all in section 2.13); `etcdutl` present in the etcd image.
+
+Items **not** verified; each is a block labelled `EXPECTED OUTPUT (not captured)` or a claim that needs a live run:
+
 1. Section 2.7: the `k -n kube-system get lease` listing (names, holders, ages).
 2. Section 2.8: the kubeadm-TLS `member list` table (IDs, URLs).
 3. Section 5: all outputs (`kube-vip` hostPath line, node lists, `ip -br a` with the VIP, `curl /healthz`, join success text, EndpointSlice, final checks), and the exact `kubeadm join` log lines for etcd learner add and promote.
@@ -1416,26 +1637,17 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.10 (T4.10-use-configmaps-and-secrets-to-configure.md) — 8 expected-output blocks
 **Known limitation.** The "real output captured on a live cluster" done-criterion could not be met in full: neither Multipass VMs nor a kind cluster were available (the machine-wide kind lock was held by other writers for the whole 20-minute wait). The encryption behaviour, the error texts, RBAC, immutability and the NodeRestriction rejection were captured from a real v1.37.0 API server and etcd 3.7.0 run as Docker containers; the kubeadm ConfigMaps and the `kubeadm upgrade node phase kubelet-config` dry-run were captured from kubeadm v1.37.0 in the `kindest/node:v1.37.0` image; the stub-domain Corefile was tested with CoreDNS v1.14.6 containers. To meet the criteria fully you need 3 VMs (`cp1`, `w1`, `w2`) with kubeadm 1.37.x and a 3-node kind cluster, then re-run Labs A, B and C and replace the EXPECTED blocks.
-- [x] EncryptionConfiguration apiVersion in 1.37: `apiserver.config.k8s.io/v1` starts a real v1.37.0 API server; `v1beta1` and `v2` fail with `no kind "EncryptionConfiguration" is registered ...` (Docker rig).
-- [x] Static Pod reference prohibition, API side: NodeRestriction rejects mirror Pods that reference ConfigMaps or Secrets (Docker rig, section 2.8).
-- [ ] Static Pod reference prohibition, kubelet side: what the kubelet does and what event or log text appears when a static Pod manifest on a real node references a ConfigMap or Secret. Not captured; do not rely on an exact message.
-- [ ] Section 2.2: `k -n kube-system get cm` listing on a live kubeadm 1.37 cluster (names from the kubeadm dry-run plus `extension-apiserver-authentication` and `kube-root-ca.crt`; `cluster-info` lives in `kube-public`).
-- [ ] Section 2.10: `rollout status deploy/web` output (the rig had no Deployment controller).
-- [ ] Section 4.3 and Labs B and C: that a changed `kube-apiserver.yaml` restarts the static Pod within about 20 seconds, that a changed `enc.yaml` alone does not, the move-out/move-in restart trick and its 25-second wait, `crictl ps -a` and `crictl logs` output shapes, the kubelet restart back-off, and the `/readyz` wait loops.
-- [ ] Section 4.3: that the kubelet treats every non-hidden file in `/etc/kubernetes/manifests` as a manifest (backups must be outside the directory).
-- [ ] Section 2.5: the etcdctl environment variables `ETCDCTL_ENDPOINTS`, `ETCDCTL_CACERT`, `ETCDCTL_CERT`, `ETCDCTL_KEY` and the `kubectl exec etcd-cp1 -- etcdctl` function on a kubeadm node (the Docker rig used `docker exec` without TLS). Whether `etcdctl`, `hexdump` or `jq` exist on exam hosts is UNVERIFIED (E9 lists only kubectl, `yq`, `curl`, `wget`, `man`).
-- [ ] Section 2.2 and Lab A: that the CoreDNS `reload` plugin picks up the change within about a minute after the kubelet refreshes the mounted file; Lab A in-cluster Pod, Service, rollout and lookup output on kind (the Corefile logic was tested in Docker).
-- [ ] Lab A: the `corp-dns` Pod runs with the kubeadm-style `securityContext` (drop ALL, add NET_BIND_SERVICE, read-only root); the same flags started CoreDNS v1.14.6 in Docker, not in a Pod.
-- [ ] Section 2.4: `kms` v2 with a real plugin (prefix `k8s:enc:kms:v2:<name>:` is from the docs); wildcard resources and the `configmaps` entry (from the docs, not run); the docs' statements on `aescbc` strength and the `aesgcm` 200,000-write rotation limit.
-- [ ] Section 2.9: the aggregated `view` and `edit` ClusterRoles' effect on Secrets (stated from the RBAC docs; the rig had no controller manager, so the aggregation did not run). The Node authorizer limit on Secrets is stated from general knowledge of Kubernetes, not captured.
-- [ ] Section 2.11: `kubeadm upgrade node phase kubelet-config` on a real node (only `--dry-run` was captured; the real run in the container stopped at `stat /var/lib/kubelet/config.yaml`), the new `instance-config.yaml` file in kubeadm 1.37, and the default of `configMapAndSecretChangeDetectionStrategy`.
-- [ ] Section 2.6: the explanation that a read through a non-first provider/key marks the object for rewrite is the author's reading of the observed behaviour (first `replace` rewrote `db`, second left revision `227` unchanged); the observation is real, the internal mechanism is not source-checked.
-- [ ] Section 2.6 and 6: the error text when encrypted Secrets are read after the encryption flag was removed (not captured).
-- [ ] Section 1 and 8: nothing exam-specific is claimed beyond E2, E3, E7, E8 and E9; which tasks appear in the exam is not stated anywhere.
----
+
+Facts the entry required me to verify:
+
+
+EXPECTED OUTPUT (not captured) blocks and unverified items:
 
 ### T4.13 (T4.13-configure-pod-admission-and-scheduling-limits.md) — 1 expected-output blocks
 **Known limitation.** The `REAL OUTPUT` blocks in sections 2–6 were captured on a real 3-node kind cluster (`k-t413`, `kindest/node:v1.37.0`, kindnet CNI rather than the `env/kind.yaml` Calico setup — disclosed in the header). What could not be produced or re-run from this machine: the section 7 labs (their commands are traced end to end but were not executed on a fresh cluster), every command that runs inside a kubeadm VM node (`ssh`, `systemctl`, `crictl` — the kind captures used `docker exec` + `journalctl` instead), and the doc-based claims listed below. Meeting the "real output" criteria for those needs a fresh 3-node kind cluster (labs) or the 3 kubeadm VMs (node-level parts).
+
+Items still to verify on a cluster, and where they appear:
+
 - §2.7 "Cluster defaults" — the scheduler's documented built-in soft spread by hostname and zone was not verified on the capture cluster. Check by labelling two workers with different `topology.kubernetes.io/zone` values and watching a constraint-free Deployment's placement.
 - §2.8 — the claim that a quota tracking `requests.cpu`/`requests.memory` rejects a Pod that sets no request (when no LimitRange default fills it in) is from the docs and was not run. Re-run the §2.8 quota demo without the LimitRange.
 - §2.10 — `systemctl cat kubelet` on a kubeadm VM (the `--config` flag location); the kind capture used `ps` inside the node instead.
@@ -1447,6 +1659,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.16 (T4.16-implement-storage-classes-and-dynamic-volume.md) — 7 expected-output blocks
 **Known limitation.** The done criterion "Real dynamic PV creation output" is **not met**: this writing session had no kind, multipass or kubeadm cluster available (a no-cluster run), so every output block above is labelled `EXPECTED OUTPUT (not captured)` and written from docs and knowledge, not captured. To meet the criterion, run section 5 and the three labs on a 3-node kind cluster (`kindest/node:v1.37.0`) or the 3 kubeadm VMs, and replace the blocks with real output. Affected blocks: all of section 5 (steps 1–4), the section 4.2 observe demos (expected `nodeAffinity`/`mountOptions` values are inline comments, not captured), and the Lab 7.1–7.3 outputs that are only described in the solutions (`k get sc` listings, `k describe pvc` event text, `k get pvc`/`k get pv` phases, provisioner deployment status, PV `nodeAffinity` JSON, `result.txt` contents, `cat /data/state.txt`).
+
+Version-dependent items to confirm on a live v1.37 cluster:
+
 1. local-path-provisioner v0.0.37: that `https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.37/deploy/local-path-storage.yaml` applies cleanly on kubeadm 1.37, that it creates the namespace `local-path-storage`, Deployment `local-path-provisioner` (image `rancher/local-path-provisioner:v0.0.37`), ConfigMap `local-path-config` and a StorageClass named `local-path` with `WaitForFirstConsumer` + `Delete`, and that its default node path is `/opt/local-path-provisioner` (the entry flags the manifest URL and SC name as must-verify).
 2. Whether `rancher.io/local-path` v0.0.37 supports `allowVolumeExpansion` (assumed: no — directories have nothing to resize; the lessons use the flag `true` only to show the field). Also whether its created PVs use `hostPath` or `local` as the volume source (assumed `hostPath` with `nodeAffinity`), and whether `Delete` reclaim removes the node's data directory as Lab 7.2 assumes.
 3. Behavior with two `is-default-class` classes on 1.37 — assumed: the most recently created default wins for new claims; confirm exact semantics and any events. Also confirm retroactive default assignment updates PVCs created while no default existed.
@@ -1464,6 +1679,11 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.17 (T4.17-understand-connectivity-between-pods.md) — 17 expected-output blocks
 **Known limitation.** This is a **vms** topic and the machine it was written on has no Multipass or KVM, and no kind. The Done criterion "real cross-node ping and tcpdump output" is therefore **not met**: every cluster and node output block in this lesson is labelled `EXPECTED OUTPUT (not captured)`. To meet it, build the three VMs (`cp1`, `w1`, `w2`, T4.01/T4.02, Calico v3.33.0 from `calico.yaml`), run the commands in sections 2.3, 2.6, 2.9, 2.11, 5 and 7, and replace the blocks with the real output labelled `REAL OUTPUT (vms, kubeadm 1.37.x, Calico v3.33.0)`. The diagram matches the example addresses in the table at the top, not a live cluster.
+
+What I did verify, by reading the v3.33.0 manifests (fetched 2026-10-27, not a live cluster): CRD name `ippools.crd.projectcalico.org` (kind `IPPool`, version `v1`, cluster scoped); fields `cidr`, `blockSize` (default 26), `ipipMode` and `vxlanMode` (enum `Never/Always/CrossSubnet`, default `Never`), `natOutgoing`, `nodeSelector` (default `all()`), `allowedUses`; the validation that IPIP and VXLAN cannot both be enabled; `cidr` and `blockSize` immutable; `calico-node` DaemonSet in `kube-system` with label `k8s-app=calico-node`, `calico_backend: "bird"`, `typha_service_name: "none"`, `veth_mtu: "0"`, env `CALICO_IPV4POOL_IPIP=Always`, `CALICO_IPV4POOL_VXLAN=Never`, commented-out `CALICO_IPV4POOL_CIDR`, `FELIX_IPV6SUPPORT=false`, probes using `calico component node health`; the operator `custom-resources.yaml` default (`192.168.0.0/16`, `blockSize: 26`, `VXLANCrossSubnet`, `natOutgoing: Enabled`); the `sed` lines that set `CALICO_IPV4POOL_CIDR` (tested on the downloaded file).
+
+Still to verify on a live v1.37 cluster (each is an `EXPECTED OUTPUT (not captured)` block or an unconfirmed statement):
+
 1. Section 2.3: output of `k get nodes -o custom-columns=...podCIDR`, the controller-manager flags (`--allocate-node-cidrs=true`, `--cluster-cidr`, `--service-cluster-ip-range`) and `clusterCIDR` in the `kube-proxy` ConfigMap on a kubeadm 1.37 cluster; **that `node.spec.podCIDR` is present with Calico IPAM** and that Pod IPs fall outside it.
 2. Section 2.5: the IPPool YAML printed by `k get ippools.crd.projectcalico.org default-ipv4-ippool -o yaml` (default pool name `default-ipv4-ippool`, `allowedUses`, `natOutgoing: true`); that `k get ippools` alone is ambiguous when the Calico API server is installed; the exact wording of the BGP readiness event.
 3. Section 2.6: `ping` TTL values (62 cross-node, 63 same node); the `ip route`, `ip route get` and `ip -d link show tunl0` outputs, including `blackhole`, `proto bird onlink` and the tunnel `src`; the VXLAN route form `via <remote block base> dev vxlan.calico onlink`.
@@ -1484,7 +1704,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.18 (T4.18-use-clusterip-nodeport-loadbalancer-service-types.md) — 15 expected-output blocks
 **Known limitation.** This lesson was written on a machine without Multipass or KVM, and T4.18 is a **vms** topic, so no cluster command was run and the done criteria "real outputs for all three types" and "MetalLB setup reproducible" are **not met by capture**: every cluster and node output block is labelled `EXPECTED OUTPUT (not captured)`. The MetalLB setup is written to be reproducible (pinned chart 0.16.1, Helm v4.3.1, verified URLs, verified CRD names and fields) but it was not executed. To meet both criteria you need the three-VM cluster (cp1, w1, w2) with a free address range on the VM network. Reviewers should not raise this limitation as a major problem on its own.
+
 **Checked in source (read, not run).** Please confirm each on a live cluster:
+
 1. kubeadm default service subnet `10.96.0.0/12` (`DefaultServicesSubnet`, kubernetes v1.37.1 `cmd/kubeadm/app/apis/kubeadm/v1beta4/defaults.go`). Also run `k get servicecidrs` and `k get ipaddresses` and compare with the example output in 2.3 (column names come from the printer source).
 2. The `externalIPs` warning text `spec.externalIPs is deprecated and may no longer be implemented in some clusters` (`pkg/api/service/warnings.go`, v1.37.1). Create a Service with `externalIPs` on a 1.37 cluster and confirm that kubectl prints it with the `Warning: ` prefix. Also confirm "deprecated in v1.36, removal planned in v1.43" against the v1.36 release notes (taken from the topic specification, not read from an official page).
 3. NodePort default range `30000-32767` and the two error texts (`provided port is not in the valid range. The range of valid ports is 30000-32767`, `provided port is already allocated`).
@@ -1492,8 +1714,11 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 5. The health check node port handler: HTTP 200/503 and the JSON keys `service`, `localEndpoints`, `serviceProxyHealthy`. Confirm the path `/healthz` is accepted (the handler appears to ignore the path).
 6. kubectl printers: `get endpointslices` shows `ENDPOINTS` for every address including not-ready ones, three at most then `+ N more...`, and `<unset>` when empty.
 7. MetalLB v0.16.1: chart 0.16.1 = app v0.16.1; CRD names; `IPAddressPool`/`L2Advertisement` at `metallb.io/v1beta1` with the printed columns; annotations `metallb.io/address-pool` and `metallb.io/loadBalancerIPs`; event reasons and messages `IPAllocated`/`Assigned IP "..."`, `AllocationFailed`/`Failed to allocate IP for "ns/name": no available IPs`, `nodeAssigned`/`announcing from node "..." with protocol "layer2"`; no event when there are no pools; Services with a `loadBalancerClass` are ignored without `--lb-class`; `ipaddresspoolvalidationwebhook.metallb.io` webhook name; `servicel2statuses` columns.
+
 **Output blocks to capture** (all `EXPECTED OUTPUT (not captured)`): 2.3 (`servicecidrs`, `ipaddresses`, apiserver flag), 2.4 (nodePort error), 2.5 (MetalLB Pods), section 4.2 (slice listing), section 5 steps 1-8 (every block), section 6 (error texts and symptoms in the table, apart from those checked in source), section 7 lab outputs.
+
 **Version-dependent or unconfirmed claims.**
+
 1. Helm v4.3.1 install commands (`helm install ... --version 0.16.1 --wait`) and the resulting Pod names (`metallb-controller`, `metallb-speaker`, 4 containers per speaker) and whether a speaker runs on `cp1`. `k -n metallb-system logs deploy/metallb-controller` assumes that Deployment name.
 2. `ipMode` on `status.loadBalancer.ingress[]` (values `VIP`/`Proxy`) and whether MetalLB sets it.
 3. `ProxyTerminatingEndpoints`: the exact rule for when kube-proxy uses terminating-but-serving endpoints (section 2.8, condition table).
@@ -1512,6 +1737,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.23 (T4.23-manage-and-evaluate-container-output-streams.md) — 12 expected-output blocks
 **Known limitation.** The machine that wrote this lesson has no `kind` and no `multipass`, and this topic needs VMs (`cp1`, `w1`, `w2` with kubeadm 1.37.x and containerd 2.x). So the done criterion "Real crictl logs output from a crashed control-plane container" is **not met**, and the three-path comparison in section 5 is shown as **EXPECTED OUTPUT (not captured)**. To meet both, run section 5 and Lab 2 on 3 VMs (or a 3-node kubeadm cluster) and paste the real output. Only these blocks are real: the CRI-file filtering in section 2.4 (REAL OUTPUT (Docker), on a hand-made sample file, not a node file) and the `tail -F` shared-volume and missing-file messages in section 4 (REAL OUTPUT (Docker), not Kubernetes). The `sed` insertion used by `break.sh` was also tested on a sample file in Docker.
+
+Items to confirm on a live v1.37 cluster:
+
 1. **CRI log line format on containerd 2.x** (`<RFC3339Nano> <stream> <F|P> <text>`) and the `P` split size (about 16 KiB). Check: `head -3 /var/log/pods/<ns>_<pod>_*/<container>/0.log`.
 2. **kubelet rotation defaults in 1.37**: `containerLogMaxSize: 10Mi`, `containerLogMaxFiles: 5`, minimum 2. Check: `kubelet --version`, the KubeletConfiguration reference for 1.37, and `grep containerLog /var/lib/kubelet/config.yaml` (an unset field means the default).
 3. **Rotated file naming** (`0.log.<YYYYMMDD-HHMMSS>`), `.gz` compression of older rotated files, and the roughly 10-second check interval.
@@ -1535,6 +1763,9 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 
 ### T4.25 (T4.25-troubleshoot-cluster-components.md) — 16 expected-output blocks
 **Known limitation.** This lesson was written on a machine with no `kind` and no `multipass`, and this topic needs VMs (`cp1`, `w1`, `w2` with kubeadm 1.37.x and containerd 2.x). So two done criteria are **not met**: "Real crictl logs for each component failure" (every log and kubectl output block is shown as **EXPECTED OUTPUT (not captured)**, with placeholders where I do not know the exact text) and "Fault-injection script included and tested" is only **partly met**: the scripts are included, and their `sed` commands were tested on sample files in Docker, but never on a real control plane. To meet both, run section 5 and the three labs on 3 VMs with kubeadm 1.37.x and paste the real output. The only real output in this lesson is: the path-scan loop and the lab fault diffs on sample files (sections 2.6 and 7), the `sed` that adds `--v=2` (section 4.4), and the `date -d` conversion (Lab 2), all labelled REAL OUTPUT (Docker) and none of them a Kubernetes result.
+
+Items to confirm on a live v1.37 cluster:
+
 1. **Static Pod restart timing on kubelet 1.37.** The 20 to 90 second range and the 20 s `fileCheckFrequency` default are from general knowledge. Measure: save a harmless edit and time how long until `crictl ps -a` shows the new container.
 2. **`/readyz?verbose` output format on v1.37.** The `[+]name ok` lines, the final `readyz check passed`, the failing line shape `[-]etcd failed: reason withheld`, and how `kubectl get --raw` prints a failing endpoint. Check on a healthy cluster and with etcd stopped.
 3. **`componentstatuses` in v1.37.** Does `k get cs` still exist, what warning does it print, and does it report the scheduler and controller-manager correctly on a kubeadm cluster?
@@ -1552,16 +1783,14 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 15. **Tool availability on exam hosts:** `crictl`, `watch`, `vim` and `journalctl` are not in the tool list of summary E9 and are UNVERIFIED for the exam. Root's kubeconfig on a node is also UNVERIFIED.
 16. **Lab 1 evidence greps:** the checks `grep -q 'scheduler-x.conf'` etc. assume the logs and events repeat the bad value. Confirm on a live cluster; if a component's log does not print the value, widen the `tail`.
 17. **`pods` / `mirror` timing in Lab 1 Step B:** that the mirror Pod `kube-controller-manager-cp1` shows the image pull error (assumes the node name is `cp1`).
-- [x] Every subtopic bullet is in section 2 or 4
-- [x] Every common mistake is in section 6
-- [x] All three labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete; no `:latest`
-- [ ] Done criteria: fault-injection script tested (partly: Docker sample files only), real crictl logs (not met: no VMs)
-- [x] No exam fact without a source URL
-- [x] Output blocks are real or labelled EXPECTED OUTPUT (not captured)
+
+Self-check (printed again in the reply):
 
 ### T4.26 (T4.26-troubleshoot-clusters-and-nodes.md) — 13 expected-output blocks
 **Known limitation.** This lesson was written on a machine with no `kind` and no `multipass`, and this topic requires VMs (`cp1`, `w1`, `w2` with kubeadm 1.37.x and containerd 2.x). So the done criteria are **not fully met**: "Each fault has the real journal/describe output" is unmet (every output block is labelled **EXPECTED OUTPUT (not captured)**, with placeholders where I do not know the exact text); "Runbook validated against all 5 faults" is unmet (the runbook was written to cover all five Lab-2 faults by design but never executed against them); "Every lab has setup, hints, collapsed solution, cleanup" is met structurally, but no lab was run. To meet them, build the 3-VM cluster (`env/vm-prereqs.sh`, kubeadm 1.37.x, Calico v3.33.0), run section 5 and all three labs, and replace the expected outputs with real ones. No REAL OUTPUT blocks exist in this lesson.
+
+Items to confirm on a live v1.37 cluster:
+
 1. **Exact condition/reason/message text on 1.37** for: dead kubelet (`NodeStatusUnknown`, `Kubelet stopped posting node status.`), network-not-ready (`container runtime network not ready ... cni plugin not initialized` wording under containerd 2.x), `container runtime is down`, and the pressure-condition messages (`KubeletHasSufficientMemory`, `KubeletHasNoDiskPressure`, `KubeletHasSufficientPID`, `KubeletReady`).
 2. **v1.37 node lifecycle conditions:** with the `NodeLifecycleConditions` gate off (default), confirm none of `DrainInProgress`/`Drained`/`MaintenancePlanned`/`MaintenanceInProgress`/`GracefulNodeShutdownInProgress` appear in `node.status.conditions`; enable the gate and check whether anything sets them and whether `describe` prints them.
 3. **`status.declaredFeatures` contents** on a kubeadm 1.37 node (`k get node w1 -o jsonpath='{.status.declaredFeatures}'`) and whether a Pod using a gated feature fails `Filter` on a node that lacks it.
@@ -1582,22 +1811,21 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 18. **Version skew numbers** as documented for v1.37 (kubelet n-3, kubectl ±1) — recheck https://kubernetes.io/releases/version-skew-policy/ at study time.
 19. **Auto-approval of kubelet client renewals** on kubeadm 1.37 (the `csrapproving`/`selfnodeclient` path) and whether `k get csr` shows them.
 20. **`tolerations` Pod in 4.3:** that `effect: NoSchedule` + `operator: Exists` + key `node.kubernetes.io/disk-pressure` actually schedules onto a pressured node.
-- [x] Every subtopic bullet is in section 2 or 4
-- [x] Every common mistake is in section 6
-- [x] All three labs have setup, task, hints, collapsed solution, verification, cleanup
-- [x] All YAML is complete; config excerpts marked non-applyable; no `:latest`
-- [ ] Done criteria met: real journal/describe output per fault (not met — no VMs; all EXPECTED OUTPUT), runbook validated against all 5 faults (not met — designed for them, never executed), labs structurally complete (met)
-- [x] No exam fact without a source URL; unknowns marked UNVERIFIED
-- [x] Output blocks are real or labelled EXPECTED OUTPUT (not captured)
+
+Self-check (printed again in the reply):
 
 ### T4.27 (T4.27-troubleshoot-services-and-networking.md) — 21 expected-output blocks
 **Known limitation.** This lesson was written on a machine without kind or Multipass, and T4.27 is a **vms** topic (the node layers need real nodes). So no cluster command was run. The done criteria "each layer has a check command with **real output**" and "the compound outage lab was run through to the end" are **not met by capture**: every output from a cluster or a node is labelled `EXPECTED OUTPUT (not captured)`, and the three labs were not run end to end. To meet them you need the three-VM cluster (`cp1`, `w1`, `w2`) with kubeadm 1.37.x and Calico v3.33.0: run the worked example, the speed drill and the three labs, and replace each expected block below with the real output. The lab scripts passed `shellcheck` and `bash -n`; the `svc-check.sh` flow was run against a stub `kubectl`, and its probe loop was run for real in the `curlimages/curl:8.12.1` image. Reviewers should not raise this limitation as a major problem on its own.
+
 **What was checked on real binaries (Docker, not a cluster).**
-1. `kubeadm` v1.37.0 (from `kindest/node:v1.37.0@sha256:a1ed56cf...`): `kubeadm init phase addon kube-proxy --print-manifest --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint=10.0.0.1:6443` printed the kube-proxy ConfigMap with the keys **`config.conf`** and **`kubeconfig.conf`**, `clusterCIDR: 192.168.0.0/16`, `mode: iptables`, and the DaemonSet (`/usr/local/bin/kube-proxy --config=/var/lib/kube-proxy/config.conf --hostname-override=$(NODE_NAME)`, `hostNetwork`, `privileged`, toleration `operator: Exists`). The DaemonSet image tag printed was `registry.k8s.io/kube-proxy:v1.37.2` because the command's default `--kubernetes-version` is `stable-1`; the tag on your cluster follows your kubeadm version. **Note:** kubeadm 1.37.0 writes `mode: iptables`. [T4.18](../part4-cka/T4.18-use-clusterip-nodeport-loadbalancer-service-types.md) section 2.12 says to expect `mode: ""` and asks the reader to confirm; compare that text with this result. **Cross-lesson fix needed for T4.18:** its section 2.12 should say that kubeadm 1.37.0 writes `mode: iptables` (blank is also valid and means iptables); this lesson's Lab C `break.sh` handles both values.
+
+1. `kubeadm` v1.37.0 (from `kindest/node:v1.37.0@sha256:a1ed56cf...`): `kubeadm init phase addon kube-proxy --print-manifest --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint=10.0.0.1:6443` printed the kube-proxy ConfigMap with the keys **`config.conf`** and **`kubeconfig.conf`**, `clusterCIDR: 192.168.0.0/16`, `mode: iptables`, and the DaemonSet (`/usr/local/bin/kube-proxy --config=/var/lib/kube-proxy/config.conf --hostname-override=$(NODE_NAME)`, `hostNetwork`, `privileged`, toleration `operator: Exists`). The DaemonSet image tag printed was `registry.k8s.io/kube-proxy:v1.37.2` because the command's default `--kubernetes-version` is `stable-1`; the tag on your cluster follows your kubeadm version. **Note:** kubeadm 1.37.0 writes `mode: iptables`. [T4.18](part4-cka/T4.18-use-clusterip-nodeport-loadbalancer-service-types.md) section 2.12 says to expect `mode: ""` and asks the reader to confirm; compare that text with this result. **Cross-lesson fix needed for T4.18:** its section 2.12 should say that kubeadm 1.37.0 writes `mode: iptables` (blank is also valid and means iptables); this lesson's Lab C `break.sh` handles both values.
 2. `kube-proxy` v1.37.0 (`registry.k8s.io/kube-proxy:v1.37.0`): the error messages for an invalid `mode`, an invalid `clusterCIDR`, invalid YAML, a missing kubeconfig file, and the info line for a misspelled field (lenient decoding) in section 2.12.
 3. `nicolaka/netshoot:v0.14` (tools present: `curl`, `dig`, `nslookup`, `tcpdump`, `ss`, `nc`, `traceroute`, `ip`, `iptables`, `nmap`), `busybox:1.36` and `curlimages/curl:8.12.1`: the timeout, refused and NXDOMAIN messages in section 2.3 and the probe loop in 4.2. Tags `nicolaka/netshoot:v0.15`, `v0.16`, `curlimages/curl:8.11.1`, `nginx:1.27`, `busybox:1.36.1` and `registry.k8s.io/e2e-test-images/jessie-dnsutils:1.3` exist (`docker manifest inspect`); they were not run.
 4. `kubectl` v1.37.0 (from the `kindest/node` image) `--help`: `kubectl debug` has `--target`, `--copy-to`, `--profile` (values `general`, `baseline`, `restricted`, `netadmin`, `sysadmin`), `--share-processes`; `kubectl run` has `--overrides`, `--command`, `--rm`, `-l/--labels`; `kubectl delete --now` exists; `kubectl port-forward` accepts `service/...`.
+
 **Version-dependent or memory-based claims to confirm on a live v1.37 cluster.**
+
 1. Healthy kube-proxy log wording (which line names the proxier it chose). Section 2.12 describes it without quoting it.
 2. The kube-proxy health port `10256` (`/healthz`, JSON body) and the metrics port `127.0.0.1:10249` with `/proxyMode` returning `iptables`. Port 10256 is on the ports-and-protocols page; the rest is from the defaults.
 3. The exact iptables rule comment formats in section 2.13: `"<ns>/<svc>:<port> cluster IP"`, `"<ns>/<svc>:<port> -> <ip>:<port>"`, and the `has no endpoints` `REJECT --reject-with icmp-port-unreachable` rule in the **filter** table. Also the nftables-mode table `kube-proxy` and that chain names contain `<ns>/<svc>`.
@@ -1621,4 +1849,20 @@ Everything still to confirm on a live environment. Each lesson's section 11 list
 21. That a `REJECT` rule in a host firewall gives "refused" for forwarded Pod traffic as well (shown above only for a local INPUT rule in Docker, section 2.3).
 22. The `FailedScheduling` event reason for a `Pending` Pod and `FailedCreatePodSandBox` for a `ContainerCreating` Pod (section 2.9).
 23. Lab C `break.sh` with a blank baseline `mode: ""` (the two `sed -e` expressions in `break.sh` are plain POSIX; check they match the line as `k get cm kube-proxy -o yaml` prints it).
+
 **Every `EXPECTED OUTPUT (not captured)` block in this lesson** (replace each with real output):
+
+| Section | Block |
+|---|---|
+| 2.5 | `k get ingress` table (layer 0) and the HTTPRoute condition lines |
+| 2.6 | `resolv.conf` and `nslookup` from a Pod (layer 1) |
+| 2.8 | EndpointSlice table and the `ready=` jsonpath lines |
+| 2.9 | Pod `0/1 Running` row and the readiness probe event (layer 4) |
+| 2.10 | `ss -ltn` inside a debug container |
+| 2.11 | `get netpol` and `describe netpol` (layer 6) |
+| 2.12 | `/proxyMode` output |
+| 2.13 | The `iptables-save` rule set for Service `web` |
+| 2.14 | `calico-node` Pods and the `ip route` lines |
+| 2.15 | `nft list ruleset` with a counter on a drop rule (layer 9) |
+| 4.3 | `rollout status`, `get svc,endpointslices` for the application |
+| 5 | The `svc-check.sh` run with the selector fault; the Pod labels; the `iptables-save -t filter` REJECT line; the run after the fix |

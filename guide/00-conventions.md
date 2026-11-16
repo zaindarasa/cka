@@ -65,7 +65,7 @@ Learners reach nodes with `ssh <node>` and `sudo -i`, like the exam (summary E7,
 - Files for a lab go in `~/lab/<topicid>/`.
 
 ## 4. Cross-links
-Format: `see [T3.12](../part3-ckad/T3.12-<slug>.md)`. Link only to topics in a LOWER wave or listed as a prerequisite. Slug = title in lowercase, words joined by hyphens, at most 6 words. Part directories: `part1-linux`, `part2-basics`, `part3-ckad`, `part4-cka`.
+Format: `see [T3.12](../part3-ckad/T3.12-slug.md)` (angle-bracket-free so it cannot render as a link). Link only to topics in a LOWER wave or listed as a prerequisite. Slug = title in lowercase, words joined by hyphens, at most 6 words. Part directories: `part1-linux`, `part2-basics`, `part3-ckad`, `part4-cka`.
 
 ## 5. Exam facts
 Copy exam facts only from summary §2 (cite the row's URL). Anything else is written `UNVERIFIED`. Never use real exam questions, dumps, or phrases like "this was on the exam". Content must be original.

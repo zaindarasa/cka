@@ -2,6 +2,8 @@
 
 All 76 topics in learning order. Written lessons are links; the rest are planned.
 
+**Status key:** `ready` = passed its first review clean. `written (1 review + 1 fix)` = reviewed once and fixed once, not re-checked. `written` = drafted, review pending. `not written yet` = planned.
+
 ## Part 1 - Linux for Kubernetes
 
 | ID | Topic | Hours | Status |

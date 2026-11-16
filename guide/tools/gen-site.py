@@ -15,8 +15,11 @@ for m in re.finditer(r"^### (T\d\.\d\d) .*?\n- Part / order / estimated study ho
 def lesson(tid, p):
     return next((x for x in (G/dirs[p]).glob(f"{tid}-*.md")), None)
 
-side = ["* [Home](README.md)", "* [Roadmap: all 76 topics](ROADMAP.md)", "* [Conventions](00-conventions.md)", "* [Progress](PROGRESS.md)"]
-road = ["# Roadmap", "", "All 76 topics in learning order. Written lessons are links; the rest are planned.", ""]
+side = ["* [Home](README.md)", "* [Roadmap: all 76 topics](ROADMAP.md)", "* [Conventions](00-conventions.md)", "* [Progress](PROGRESS.md)",
+        "* [Verification backlog](VERIFY-LIST.md)", "* Extras", "  * [Exam intel and strategy (CKAD)](extras/exam-intel.md)",
+        "  * [15-day CKAD study plan](extras/study-plan.md)", "  * [CKAD practice questions](extras/practice-questions.md)"]
+road = ["# Roadmap", "", "All 76 topics in learning order. Written lessons are links; the rest are planned.", "",
+        "**Status key:** `ready` = passed its first review clean. `written (1 review + 1 fix)` = reviewed once and fixed once, not re-checked. `written` = drafted, review pending. `not written yet` = planned.", ""]
 for part in "1234":
     pt = [t for t in topics if t[1] == part]
     done = [t for t in pt if lesson(t[0], part)]

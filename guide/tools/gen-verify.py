@@ -33,7 +33,11 @@ for d in ['part1-linux','part2-basics','part3-ckad','part4-cka']:
         items = clean(m.group(1))
         if not any(l.strip() for l in items): continue
         env = 'linux-vm' if d=='part1-linux' else ('vms' if tid in vms or tid in mixed else 'kind')
-        n_exp = len(re.findall(r'EXPECTED OUTPUT \(not captured\)', text))
+        # Count only labels at the start of a line (optional whitespace and an
+        # optional '# ' comment prefix, as inside ```text blocks). Mid-line
+        # prose references and '- [ ]' self-check items mentioning the label
+        # must not count, so do not use a bare substring findall here.
+        n_exp = len(re.findall(r'^\s*(?:#\s*)?EXPECTED OUTPUT \(not captured\)', text, re.M))
         groups[env].append((tid, f.name, n_exp, items))
 
 count = sum(len(i[3]) for g in groups.values() for i in g)

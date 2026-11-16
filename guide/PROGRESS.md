@@ -1,6 +1,6 @@
 # PROGRESS (source of truth; resume from here)
 
-Status key: **PASS** = clean first review. **FIXED** = reviewed once and fixed once, not re-checked. **DRAFT** = written, review pending. **NEEDS-HUMAN** = has a known open error (see notes). The dated "Decisions" lines are a historical run log, not current status.
+Status key: **PASS** = clean first review. **FIXED** = reviewed once and fixed once, not re-checked. **DRAFT** = written, review pending. **NEEDS-HUMAN** = has a known open error (see notes). These statuses track the **review process only**; whether a lesson's command output is real or expected is a separate axis, shown by the `REAL OUTPUT (...)`/`EXPECTED OUTPUT (not captured)` labels in the lesson and inventoried in `VERIFY-LIST.md`. The right-hand "Open To verify items" column is a free-text note: a few rows record capture state (e.g. T1.10, T3.12, T4.04), but most repeat the review outcome or are blank — for the actual list of uncaptured items, use `VERIFY-LIST.md`, not this column. The dated "Decisions" lines are a historical run log, not current status.
 
 Decisions:
 - 2026-10-27: Inputs copied to guide/inputs/. `inputs/entry.sh <ID>` prints one topic entry.

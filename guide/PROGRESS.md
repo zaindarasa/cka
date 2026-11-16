@@ -76,9 +76,13 @@ Decisions:
 | T4.06 | Manage role based access control (RBAC) | 12 | wf | PASS | 0 | PASS |  |
 | T4.23 | Manage and evaluate container output streams | 13 | wf | FAIL | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.27 | Troubleshoot services and networking | 12 | wf | FAIL | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.13 | Configure Pod admission and scheduling (limits, node affinity, etc.) | 12 | wf | - | 0 | DRAFT | written, review pending |
-| T4.22 | Use the Gateway API to manage Ingress traffic | 12 | wf | - | 0 | DRAFT | written, review pending |
-| T4.25 | Troubleshoot cluster components | 14 | wf | - | 0 | DRAFT | written, review pending |
+| T4.13 | Configure Pod admission and scheduling (limits, node affinity, etc.) | 12 | wf | FAIL (3B/0M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.22 | Use the Gateway API to manage Ingress traffic | 12 | wf | PASS (0B/0M/6m) | 0 | PASS |  |
+| T4.25 | Troubleshoot cluster components | 14 | wf | PASS (0B/0M/6m) | 0 | PASS |  |
+| T3.24 | Debugging in Kubernetes | 13 | wf | FAIL (0B/2M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.15 | Manage persistent volumes and persistent volume claims | 12 | wf | FAIL (0B/4M/5m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.16 | Implement storage classes and dynamic volume provisioning | 13 | wf | FAIL (0B/1M/6m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.26 | Troubleshoot clusters and nodes | 15 | wf | FAIL (0B/3M/4m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 
 Decisions (cont.):
 - 2026-10-27: Re-reviews write to reviews/<ID>-review-r<N>.md so fix changelogs are not overwritten.

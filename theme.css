@@ -2,7 +2,7 @@
 :root {
   --bg: #17171a; --surf: #1f1f23; --fg: #c9c9c9; --mut: #999999; --acc: #e08a72; --line: #2c2c31;
   --key: #d8a48f; --str: #97bfa9; --num: #d4b878; --fn: #8fb4dd;
-  --code-out: #121215;
+
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --fs: 19px; --lh: 1.75; --ws: -.2em; --hover: #f0b8a5;
 }
@@ -59,11 +59,10 @@ body { background: var(--bg); color: var(--fg); font: 400 var(--fs)/var(--lh) va
 .markdown-section code { font: 400 .95em var(--mono); background: var(--surf); color: var(--key); padding: .08em .4em; border-radius: 5px }
 .markdown-section pre { background: var(--surf); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 10px; margin: 0 0 1.4em; padding: 0; overflow-x: auto; position: relative }
 .markdown-section pre > code { display: block; background: none; color: var(--fg); font-size: .95em; line-height: 1.55; padding: .95em 1.2em }
-/* commands get the accent bar, manifests a cool bar, captured output a dimmed well */
+/* commands get the accent bar, manifests a cool bar, captured output a muted bar */
 .markdown-section pre[data-lang="bash"], .markdown-section pre[data-lang="sh"], .markdown-section pre[data-lang="shell"], .markdown-section pre[data-lang="console"] { border-left-color: var(--acc) }
 .markdown-section pre[data-lang="yaml"], .markdown-section pre[data-lang="yml"], .markdown-section pre[data-lang="json"], .markdown-section pre[data-lang="diff"] { border-left-color: var(--fn) }
-.markdown-section pre[data-lang="text"], .markdown-section pre:not([data-lang]) { background: var(--code-out) }
-.markdown-section pre[data-lang="text"] > code, .markdown-section pre:not([data-lang]) > code { color: #b3b3b3 }
+.markdown-section pre[data-lang="text"], .markdown-section pre:not([data-lang]) { border-left-color: var(--mut) }
 .markdown-section pre[data-lang]::after { color: var(--mut); font: 500 11px var(--mono); letter-spacing: .08em; top: .5em; right: .9em }
 .markdown-section pre[data-lang="text"]::after, .markdown-section pre:not([data-lang])::after { content: "output" }
 /* a lead-in line (e.g. "REAL OUTPUT (...):") hugs the block it introduces */

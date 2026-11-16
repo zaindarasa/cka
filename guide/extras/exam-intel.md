@@ -5,7 +5,7 @@
 ## 1. The exam shape, as reported
 
 - Pass mark reported at **66%**, about 17 tasks in 2 hours, one free retake.
-- Remote proctored via PSI. `docs.kubernetes.io` (docs + blog) is allowed in the browser tab.
+- Remote proctored via PSI. `kubernetes.io/docs` (docs + blog) is allowed in the browser tab.
 - Each task is its own SSH session with its own kubeconfig context. Wrong-context work scores zero and nobody tells you.
 - There is no answer-checker. `get`, `describe`, `rollout status` and `curl` from a temp pod are the only grader.
 
@@ -184,3 +184,31 @@ Reports put question overlap between attempts at roughly 80% (from the 59→91 r
 4. Repeat until <8 min per task, no docs for the common shapes
 5. Once mocks hit 80%+ consistently → book the exam
 ```
+
+## 12. Sources
+
+The threads this page was mined from (r/ckad, r/KubernetesCerts, r/devops, Dec 2025 – Feb 2026). Read a few — the per-question detail in them is what the frequency table is built on.
+
+**Pass reports (what showed up):**
+- [Passed CKAD with 87%, here's my exam experience](https://reddit.com/r/devops/comments/1ue3cmq/passed_ckad_with_87_heres_my_exam_experience/)
+- [Scored 99% | CKAD](https://reddit.com/r/ckad/comments/1puipks/scored_99_ckad/)
+- [CKAD exam passed, 80%](https://reddit.com/r/ckad/comments/1r0fmy0/ckad_exam_passed_80/)
+- [Passed exam with 97, my experience and advice](https://reddit.com/r/ckad/comments/1rnm800/passed_exam_with_97_my_experience_and_advice/)
+- [Passed CKAD (yeah)](https://reddit.com/r/ckad/comments/1qj6ee4/passed_ckad_yeah/)
+- [How to Pass CKAD (what actually came up in my exam)](https://reddit.com/r/ckad/comments/1rq7elj/how_to_pass_ckad_what_actually_came_up_in_my_exam/)
+- [Just completed my CKAD exam — experience while fresh](https://reddit.com/r/ckad/comments/1rsh8pq/hey_everyone_just_completed_my_ckad_exam_and/)
+- [CKA, CKAD, CKS trifecta](https://reddit.com/r/KubernetesCerts/comments/1vs3ng5/cka_ckad_cks_trifecta/)
+
+**Fail reports (the failure modes section):**
+- [Failed CKAD (33%) despite scoring 105/113 on Killer.sh](https://reddit.com/r/ckad/comments/1oj3eld/failed_ckad_33_despite_scoring_105113_on_killersh/)
+- [Failed CKAD twice, please help](https://reddit.com/r/ckad/comments/1oe9l63/failed_ckad_twice_please_help/)
+- [Failed my CKAD (already cleared CKA & CKS)](https://reddit.com/r/ckad/comments/1qipl60/failed_my_ckad_i_already_cleared_cka_cks/)
+- [Failed CKAD yesterday (55%) — retake tips](https://reddit.com/r/ckad/comments/1riuqoc/failed_ckad_yesterday_55_any_tips_for_retake/)
+
+**Practice resources and exam-day:**
+- [Kubestronaut in 28 days (mocks 2–4× each)](https://reddit.com/r/KubernetesCerts/comments/1sja83t/how_i_passed_cka_ckad_cks_kcna_kcsa_kubestronaut/)
+- [Free real-cluster attempts on prepium.sh (round 3)](https://reddit.com/r/KubernetesCerts/comments/1vgd3mg/round_3_of_the_free_ckackadcks_exam_attempts_on/)
+- [Are Helm & Kustomize included?](https://reddit.com/r/ckad/comments/1rmbefk/ckad_exam_are_helm_kustomize_included_exam_on/)
+- [Exam room setup, room scan, bathroom breaks](https://reddit.com/r/KubernetesCerts/comments/1wzt0ba/cka_exam_room_setup_room_scan_and_bathroom_breaks/)
+- [Is this room a violation](https://reddit.com/r/ckad/comments/1r580br/is_this_room_considered_a_violation/)
+- [CKAD exam setup](https://reddit.com/r/ckad/comments/1rfdzwt/ckad_exam_setup/)

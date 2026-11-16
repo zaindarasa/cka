@@ -1,5 +1,7 @@
 # PROGRESS (source of truth; resume from here)
 
+Status key: **PASS** = clean first review. **FIXED** = reviewed once and fixed once, not re-checked. **DRAFT** = written, review pending. **NEEDS-HUMAN** = has a known open error (see notes). The dated "Decisions" lines are a historical run log, not current status.
+
 Decisions:
 - 2026-10-27: Inputs copied to guide/inputs/. `inputs/entry.sh <ID>` prints one topic entry.
 - Part 2 directory is `part2-basics`. Env scripts live in guide/env/ (unverified until step 5).

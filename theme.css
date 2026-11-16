@@ -96,6 +96,14 @@ a:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid
   .markdown-section { padding: 28px 16px 72px }
 }
 
+/* prev/next lesson buttons (docsify-pagination) */
+.docsify-pagination-container { border-top: 1px solid var(--line); margin-top: 3em; padding-top: 1.2em }
+.pagination-item a { display: block; color: var(--fg); border: 1px solid var(--line); border-radius: 10px; background: var(--surf); padding: .7em 1em; text-decoration: none; font: 500 .92em var(--mono); transition: border-color .15s, color .15s }
+.pagination-item a:hover { border-color: var(--acc); color: var(--hover) }
+.pagination-item .pagination-item-label { color: var(--mut); font-size: .82em }
+.pagination-item .pagination-item-title { color: var(--acc); font-weight: 700 }
+.pagination-item--next a { text-align: right }
+
 /* the base theme sets code to .8rem and paragraphs to .95em; force the reading sizes */
 .markdown-section :is(p, li) { font-size: 1em !important }
 .markdown-section pre { font-size: 1em !important }

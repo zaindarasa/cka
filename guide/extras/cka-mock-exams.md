@@ -1562,7 +1562,7 @@ exit
 
 ```bash
 #!/usr/bin/env bash
-# run from the repo root so env/kind-addons.sh resolves
+# run from the guide/ directory so env/kind-addons.sh resolves
 set -euo pipefail
 shopt -s expand_aliases; alias k=kubectl
 k config use-context kind-lab
@@ -2100,6 +2100,7 @@ k config use-context kind-lab
 for n in $(k get ns -o name | grep 'namespace/e3-' | cut -d/ -f2); do k delete ns "$n" --wait=false; done
 k delete ns prod --ignore-not-found
 k delete pv shared keep --ignore-not-found
+k delete clusterrolebinding/node-reader clusterrole/node-reader --ignore-not-found   # task 5's cluster-scoped RBAC — names as commonly written; check `k get clusterrole,clusterrolebinding | grep node` for other names
 helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb-system 2>/dev/null
 kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml 2>/dev/null || true
 rm -rf /opt/course

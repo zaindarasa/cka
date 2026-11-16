@@ -4,7 +4,7 @@
 
 ## 1. The exam shape — confirmed vs reported
 
-Confirmed by official Linux Foundation pages (collected in [research summary](../inputs/00-research-summary.md) §2 — the row number is given so you can check it):
+Confirmed by official Linux Foundation pages (collected in [research summary](../inputs/00-research-summary.md) §2 — the row number is given so you can check it). Re-checked live on 2026-11-16 against the cited pages — every row below was found verbatim on the page its summary row names. Two rows need a pointer rather than a status change: "15-20 tasks" is on the [Exam Tips](https://docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad) page ("The exams consist of 15-20 performance-based tasks."), and the 66% pass mark is on the [FAQ](https://docs.linuxfoundation.org/tc-docs/certification/faq-cka-ckad-cks) ("For the CKA Exam, a score of 66% or above must be earned to pass.") — neither appears on the CKA product page, which is expected, not a contradiction.
 
 | Fact | Status |
 |---|---|
@@ -12,10 +12,10 @@ Confirmed by official Linux Foundation pages (collected in [research summary](..
 | "The exams consist of 15-20 performance-based tasks" | confirmed — summary E2 |
 | Pass mark 66%; scored automatically; results emailed within 24 hours | confirmed — summary E4, E5 |
 | Each task is done on a **designated host**: an infobox gives `ssh <nodename>`, `sudo -i` gives root, `exit` returns to host `base`, nested ssh is not supported | confirmed — summary E7, E8 |
-| Exam hosts provide kubectl with an alias and bash completion, `yq`, `curl`, `wget`, `man`. `jq` is **not** guaranteed — use `-o jsonpath` | confirmed — summary E9 (exact alias name UNVERIFIED) |
+| Exam hosts provide `kubectl` with a `k` alias and bash completion, `yq`, `curl`, `wget`, `man`; host `base` has none of them. `jq` is **not** in the published list — use `-o jsonpath` | confirmed — summary E9 (the tips page text is "`k`alias", so the alias name is `k`) |
 | Allowed in the browser tab: `kubernetes.io/docs`, `kubernetes.io/blog`, `helm.sh/docs`, task-linked "Quick Reference" docs, and — **CKA only** — `gateway-api.sigs.k8s.io` | confirmed — summary E13 |
 | Timer alerts at 30, 15 and 5 minutes; "Pause Exam" does not stop the timer; lost time after a disconnect is not added back | confirmed — summary E12 |
-| One retake included; Killer.sh simulator: 2 sessions × 36 h, 17 questions per session (not included with CKA-SINGLE registrations) | confirmed — summary E18, E20 |
+| Two exam attempts included (first + one retake); Killer.sh simulator: 2 attempts × 36 h, 17 questions per session (not included with CKA-SINGLE registrations) | confirmed — summary E18, E20 |
 
 Reported by candidates, not confirmed by any official page:
 
@@ -106,7 +106,7 @@ Then, per task: `ssh` to exactly the host the infobox names → `sudo -i` when y
 
 ## 5. Speed tactics for admin tasks
 
-- **The alias is already there.** Exam hosts ship kubectl with an alias and bash completion (summary E9 — the page says "kalias"; the exact name is UNVERIFIED, reports say `k` works). Per-report advice: don't burn time hand-crafting aliases that evaporate on the next `ssh`. Do still set the two exports that carry over in one line: `export do="--dry-run=client -o yaml"` and `export now="--force --grace-period=0"` — and re-export them after each `sudo -i`, because root gets a fresh shell.
+- **The alias is already there.** Exam hosts ship kubectl with a `k` alias and bash completion — the tips page's text is "`k`alias" (summary E9). Per-report advice: don't burn time hand-crafting aliases that evaporate on the next `ssh`. Do still set the two exports that carry over in one line: `export do="--dry-run=client -o yaml"` and `export now="--force --grace-period=0"` — and re-export them after each `sudo -i`, because root gets a fresh shell.
 - **Imperative first, YAML by exception.** Same rule as CKAD, but the admin generators differ:
 
 ```bash
@@ -122,7 +122,7 @@ kubeadm certs check-expiration                 # cert audit in one shot
 ```
 
   There is no generator for `PersistentVolume`, `StorageClass`, `NetworkPolicy`, `Gateway`/`HTTPRoute` or `PriorityClass` — those you copy from the allowed docs and edit. Have the doc page per kind already bookmarked.
-- **`etcdctl` vs `etcdutl` — know which tool touches what.** On etcd ≥3.6 (the exam runs Kubernetes v1.37, whose kubeadm bundles etcd 3.7): `etcdctl snapshot save` talks to a *running* etcd and needs endpoint + `--cacert/--cert/--key` — read all four values out of `/etc/kubernetes/manifests/etcd.yaml`, don't type them from memory. `snapshot status` and `snapshot restore` were removed from `etcdctl` in etcd 3.6 — they live in **`etcdutl`**, which works on the file/data-dir offline with no TLS flags. Whether either binary is on an exam host's PATH is UNVERIFIED (exam host details aren't published, summary E22): run `which etcdctl etcdutl` first; the fallback is `k exec -n kube-system etcd-<node> -- etcdctl …` writing into a host-mounted dir. Full walk-through: [T4.04](../part4-cka/T4.04-manage-the-lifecycle-of-kubernetes-clusters.md).
+- **`etcdctl` vs `etcdutl` — know which tool touches what.** On etcd ≥3.6 (the exam runs Kubernetes v1.37, whose kubeadm bundles etcd 3.7): `etcdctl snapshot save` talks to a *running* etcd and needs endpoint + `--cacert/--cert/--key` — read all four values out of `/etc/kubernetes/manifests/etcd.yaml`, don't type them from memory. `snapshot status` and `snapshot restore` were removed from `etcdctl` in etcd 3.6 — they live in **`etcdutl`**, which works on the file/data-dir offline with no TLS flags. Whether either binary is on an exam host's PATH is UNVERIFIED (they are not in the published tool list of summary E9; host details beyond that list aren't published, E22): run `which etcdctl etcdutl` first; the fallback is `k exec -n kube-system etcd-<node> -- etcdctl …` writing into a host-mounted dir. Full walk-through: [T4.04](../part4-cka/T4.04-manage-the-lifecycle-of-kubernetes-clusters.md).
 - **systemd is a scoring surface, not plumbing.** `systemctl status kubelet`, `journalctl -u kubelet -n 50 --no-pager`, `systemctl restart kubelet`, and — the classic half-fix — `systemctl enable --now kubelet` so the fix survives a reboot. Practice these until they're one gesture each; they're guaranteed-useful on any node task and they exist on every systemd host regardless of what else is installed (unlike `crictl`, `etcdctl`, `jq` — presence UNVERIFIED, check with `which`).
 - **Static-pod editing protocol.** Back up to `/root` (`cp … /root/x.bak`), never leave `.bak` files inside `/etc/kubernetes/manifests` — the kubelet reads *every* file there. After editing a manifest, wait for the kubelet's rescan; after editing a kubeconfig a component uses, `crictl stop` the container — no manifest change means no restart.
 - **`crictl` is your dead-apiserver flashlight.** `kubectl` dead → `systemctl is-active kubelet` → `crictl ps -a | grep -E 'apiserver|etcd|scheduler|controller'` → `crictl logs <id>`. Then `curl -sk https://localhost:6443/readyz?verbose | tail -1` for a kubeconfig-free health check.
@@ -194,7 +194,7 @@ helm.sh/docs/                              (chart install/template/troubleshooti
 
 ## 9. If attempt 1 fails
 
-One retake is included with the registration (summary E18). The result email arrives within ~24 h (E5) and — as reported — breaks your score down by domain: that breakdown is your drill list, and Troubleshooting+Cluster-Architecture misses cost the most. Fetched second-attempt reports: 57%→90% after two passes of Killercoda practice exams; 41→47→65→81 by switching to imperative workflows and fixing exactly one failure mode per attempt. Whether questions overlap between attempts is UNVERIFIED — but the *types* in §3 recur constantly across reports, so re-drilling the types you fumbled is a good bet either way. Rebook while the misses are still fresh; the 12-month voucher window (E18) is not the constraint, your memory of what went wrong is.
+Two attempts are included with the registration — a first try plus one retake (summary E18). The result email arrives within ~24 h (E5) and — as reported — breaks your score down by domain: that breakdown is your drill list, and Troubleshooting+Cluster-Architecture misses cost the most. Fetched second-attempt reports: 57%→90% after two passes of Killercoda practice exams; 41→47→65→81 by switching to imperative workflows and fixing exactly one failure mode per attempt. Whether questions overlap between attempts is UNVERIFIED — but the *types* in §3 recur constantly across reports, so re-drilling the types you fumbled is a good bet either way. Rebook while the misses are still fresh; the 12-month voucher window (E18) is not the constraint, your memory of what went wrong is.
 
 ## 10. The daily loop (TL;DR)
 

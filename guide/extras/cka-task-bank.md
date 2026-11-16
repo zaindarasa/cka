@@ -39,7 +39,7 @@ source <(kubectl completion bash); complete -o default -F __start_kubectl k
 
 ## Domain A — Cluster architecture, installation, configuration and RBAC (~25%)
 
-Six tasks. The `vms` ones (02–05) are the heavyweights; do them in one VM session.
+Six tasks. The `vms` ones (02–05) are the heavyweights; do them in one VM session. Task 01 is a context-switching drill rather than cluster architecture — it sits here because the domain leads the bank, and the per-task `use-context` habit it trains applies to every task that follows.
 
 ### Task 01 — Context discipline
 
@@ -63,9 +63,10 @@ test "$(k --context kind-lab -n lab-ctx-a get cm marker -o jsonpath='{.data.team
 ! k --context kind-lab -n lab-ctx-b get deploy web 2>/dev/null && echo ok-3
 test "$(k config current-context)" = "kind-lab" && echo ok-4
 grep -qx 'kind-lab2' /opt/course/01/answer && echo ok-5
+test "$(k --context kind-lab2 -n lab-ctx-b get deploy web -o jsonpath='{.spec.replicas}')" = "2" && echo ok-6
 ```
 
-**Pass:** all five lines print their `ok` marker.
+**Pass:** all six `ok` markers.
 
 **Cleanup.** `kind delete cluster --name lab2`; `k delete ns lab-ctx-a`.
 </details>
@@ -96,15 +97,15 @@ command -v etcdctl etcdutl || {
 
 ```bash
 test -s /opt/course/02/etcd-snap.db && echo ok-1
-test "$(etcdutl snapshot status /opt/course/02/etcd-snap.db -w json | grep -oE '"totalKey":[0-9]+' | cut -d: -f2)" -gt 400 && echo ok-2
+test "$(etcdutl snapshot status /opt/course/02/etcd-snap.db -w json | grep -oE '"totalKey":[0-9]+' | cut -d: -f2)" -gt 0 && echo ok-2
 grep -q '/var/lib/etcd-task02' /etc/kubernetes/manifests/etcd.yaml && echo ok-3
 test "$(k get ns lab-etcd -o jsonpath='{.status.phase}')" = "Active" && echo ok-4
 test "$(k -n lab-etcd get cm marker -o jsonpath='{.data.state}')" = "before-restore" && echo ok-5
 test "$(k get nodes --no-headers | grep -c ' Ready ')" = "3" && echo ok-6
-grep -qE '[0-9]{3,}' /opt/course/02/answer && echo ok-7
+test "$(cat /opt/course/02/answer)" = "$(etcdutl snapshot status /opt/course/02/etcd-snap.db -w json | grep -oE '"totalKey":[0-9]+' | cut -d: -f2)" && echo ok-7
 ```
 
-**Pass:** all seven `ok` markers. Note: after repointing the manifest, the kubelet needs ~1 min to start the new etcd container; if the API server or the controllers serve stale state afterwards, move `kube-apiserver.yaml`, `kube-controller-manager.yaml` and `kube-scheduler.yaml` out of `/etc/kubernetes/manifests` and back in, or restart the kubelet.
+**Pass:** all seven `ok` markers. ok-2 proves the snapshot is non-empty; ok-7 proves the number you wrote down is the `totalKey` this snapshot actually reports. Note: after repointing the manifest, the kubelet needs ~1 min to start the new etcd container; if the API server or the controllers serve stale state afterwards, move `kube-apiserver.yaml`, `kube-controller-manager.yaml` and `kube-scheduler.yaml` out of `/etc/kubernetes/manifests` and back in, or restart the kubelet.
 
 **Cleanup.** `k delete ns lab-etcd`; to put etcd back on its original dir repeat the restore into `/var/lib/etcd` and repoint the manifest, or keep the new dir — either is a valid baseline. `rm -rf /root/etcd-v3.7.0-linux-*` if you installed the binaries.
 </details>
@@ -115,7 +116,7 @@ grep -qE '[0-9]{3,}' /opt/course/02/answer && echo ok-7
 
 **Task.** The control-plane node `cp1` runs v1.36.5; the workers stay as they are. Upgrade **only** `cp1` — kubeadm, the control plane components, kubelet and kubectl — to v1.37.1, keeping workloads schedulable elsewhere while you work. Write the kubelet version `cp1` reports after the upgrade to `/opt/course/03/answer`.
 
-**Setup** (on `cp1` as root — this task needs a cluster installed at 1.36.5; if your VMs are already on 1.37, rebuild them from the v1.36 repo first):
+**Setup** (on `cp1` as root — this task needs a cluster installed at 1.36.5. If your VMs are already on 1.37, rebuild them with the v1.36 package repo: `env/vm-prereqs.sh` takes `K8S_MINOR` and `K8S_PATCH` environment variables, documented at the top of the script — `K8S_MINOR=1.36 K8S_PATCH='1.36.5-*' env/vm-prereqs.sh` installs kubeadm/kubelet/kubectl 1.36.5 instead of the default v1.37. Then `kubeadm init` and the Calico install as covered in [T4.02](../part4-cka/T4.02-create-and-manage-kubernetes-clusters-using.md)):
 
 ```bash
 ssh cp1 && sudo -i
@@ -150,7 +151,7 @@ test "$(cat /opt/course/03/answer)" = "v1.37.1" && echo ok-7
 
 **Env:** vms · **Time:** 6 min · **Ref:** [T4.04](../part4-cka/T4.04-manage-the-lifecycle-of-kubernetes-clusters.md)
 
-**Task.** Audit the cluster's certificates: find which certificate expires first and write the apiserver certificate's expiry line (the date shown) to `/opt/course/04/answer`. Then renew **only** the apiserver serving certificate and make sure the API server actually starts using the new certificate.
+**Task.** Audit the cluster's certificate expiry (`kubeadm certs check-expiration` lists every cert under `/etc/kubernetes/pki` plus the kubeconfig-embedded ones — note how the leaf certs cluster around ~364 days residual while the CAs show ~10 years). Then renew **only** the apiserver serving certificate and make sure the API server actually starts using the new certificate — renewing writes the file, but the running apiserver does not pick it up until its container restarts. When the cluster is healthy again, write the renewed certificate's expiry — the `notAfter` value from `openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -enddate`, i.e. just the text after `=` — as a single line to `/opt/course/04/answer` on `cp1`.
 
 **Setup** (on `cp1` as root, before the timer):
 
@@ -158,20 +159,26 @@ test "$(cat /opt/course/03/answer)" = "v1.37.1" && echo ok-7
 ssh cp1 && sudo -i
 export KUBECONFIG=/etc/kubernetes/admin.conf
 mkdir -p /opt/course/04
+date +%s > /opt/course/04/setup-epoch    # the renewal check compares the new cert's startdate against this
 k get nodes    # all Ready
 ```
 
 <details><summary><b>Grade</b></summary>
 
+All lines run on `cp1` as root (`export KUBECONFIG=/etc/kubernetes/admin.conf`):
+
 ```bash
-test -s /opt/course/04/answer && grep -qE '[0-9]{4}|UTC' /opt/course/04/answer && echo ok-1
-d=$(kubeadm certs check-expiration 2>/dev/null | grep -E '^apiserver[[:space:]]' | grep -oE '[0-9]+d' | head -1 | tr -dc '0-9')
-test "${d:-0}" -ge 360 && echo "ok-2 apiserver residual ${d}d"
-test "$(k get --raw=/readyz 2>/dev/null)" = "ok" && echo ok-3
-crictl ps --name kube-apiserver -q | grep -q . && echo ok-4
+a=$(openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -enddate)
+b=$(echo | openssl s_client -connect 127.0.0.1:6443 2>/dev/null | openssl x509 -noout -enddate)
+test "$a" = "$b" && echo "ok-1 the served cert is the file on disk"
+not_before=$(date -d "$(openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -startdate | cut -d= -f2)" +%s)
+test "$not_before" -gt "$(( $(cat /opt/course/04/setup-epoch) - 300 ))" && echo "ok-2 cert issued during the task (notBefore ${not_before})"
+test "$(cat /opt/course/04/answer)" = "$(openssl x509 -in /etc/kubernetes/pki/apiserver.crt -noout -enddate | cut -d= -f2)" && echo ok-3
+test "$(k get --raw=/readyz 2>/dev/null)" = "ok" && echo ok-4
+crictl ps --name kube-apiserver -q | grep -q . && echo ok-5
 ```
 
-**Pass:** all four `ok` markers. Renewing writes the cert file; the running apiserver does not pick it up until its container restarts (`crictl stop` on it — the kubelet recreates it).
+**Pass:** all five `ok` markers. ok-2 is what proves a renewal happened — on an untouched cluster the cert's `notBefore` predates the setup timestamp. ok-1 compares the cert on disk with the cert the API server actually serves: `kubeadm certs renew apiserver` writes the file but the running apiserver does not pick it up until its container restarts (`crictl stop` on it — the kubelet recreates it).
 
 **Cleanup.** Nothing to undo — renewed certs are the baseline.
 </details>
@@ -180,7 +187,7 @@ crictl ps --name kube-apiserver -q | grep -q . && echo ok-4
 
 **Env:** vms · **Time:** 6 min · **Ref:** [T4.04](../part4-cka/T4.04-manage-the-lifecycle-of-kubernetes-clusters.md)
 
-**Task.** Node `w1` needs a reboot for kernel maintenance. Evict its workloads so they keep running elsewhere — the Pod named `scratch` is disposable and its `emptyDir` must not block you — then reboot `w1` (`sudo reboot`; wait for it to come back), and finally return it to service. Write the `STATUS` column `k get node w1` shows at the end to `/opt/course/05/answer`.
+**Task.** Node `w1` needs a reboot for kernel maintenance. Evict its workloads so they keep running elsewhere — the Pod named `scratch` is disposable and its `emptyDir` must not block you — then reboot `w1` (`sudo reboot`; wait for it to come back), and finally return it to service. Write the `STATUS` value `k get node w1` shows at the end — just the word, one line — to `/opt/course/05/answer`.
 
 **Setup** (on `cp1` as root, before the timer):
 
@@ -205,6 +212,7 @@ EOF
 k -n lab-maint rollout status deploy/web --timeout=90s
 k -n lab-maint get pods -o wide
 mkdir -p /opt/course/05
+date +%s > /opt/course/05/setup-epoch    # the reboot check compares w1's boot time against this
 ```
 
 <details><summary><b>Grade</b></summary>
@@ -213,10 +221,12 @@ mkdir -p /opt/course/05
 test "$(k get node w1 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = "True" && echo ok-1
 test -z "$(k get node w1 -o jsonpath='{.spec.unschedulable}')" && echo ok-2
 test "$(k -n lab-maint get pods -l app=web --field-selector=status.phase=Running --no-headers | wc -l)" = "4" && echo ok-3
-grep -q 'Ready' /opt/course/05/answer && ! grep -q 'SchedulingDisabled' /opt/course/05/answer && echo ok-4
+! k -n lab-maint get pod scratch 2>/dev/null && echo ok-4
+grep -qx 'Ready' /opt/course/05/answer && echo ok-5
+test "$(ssh w1 'date -d "$(uptime -s)" +%s')" -gt "$(cat /opt/course/05/setup-epoch)" && echo ok-6
 ```
 
-**Pass:** all four `ok` markers. `scratch` is expected to be gone — it was a bare Pod; the Deployment's Pods must all be `Running` somewhere.
+**Pass:** all six `ok` markers. `scratch` is expected to be gone — it was a bare Pod; the Deployment's Pods must all be `Running` somewhere. ok-5 needs the answer line to be exactly `Ready` (`NotReady` still contains the word), and ok-6 proves `w1` actually rebooted: its boot time must be after the setup ran.
 
 **Cleanup.** `k delete ns lab-maint`.
 </details>
@@ -247,9 +257,10 @@ test "$(k auth can-i list pods --as=$SA -n default)" = "no" && echo ok-4
 test "$(k auth can-i delete pods --as=$SA -n lab-rbac)" = "no" && echo ok-5
 diff <(printf 'yes\nno\nno\n') <(head -3 /opt/course/06/answer) && echo ok-6
 test "$(k -n lab-rbac get rolebinding deploy-reader-binding -o jsonpath='{.roleRef.name}/{.subjects[0].kind}/{.subjects[0].name}')" = "pod-read/ServiceAccount/deploy-reader" && echo ok-7
+test "$(k -n lab-rbac get role pod-read -o jsonpath='{.rules[*].verbs}' | grep -oE '[a-z]+' | sort | tr '\n' ',')" = "get,list,watch," && echo ok-8
 ```
 
-**Pass:** all seven `ok` markers.
+**Pass:** all eight `ok` markers. ok-8 compares the sorted verb set, so order in your YAML does not matter but an extra verb (or a missing one) fails.
 
 **Cleanup.** `k delete ns lab-rbac`.
 </details>
@@ -280,7 +291,7 @@ mkdir -p /opt/course/07
 ```bash
 test "$(k -n lab-roll get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}')" = "nginx:1.25" && echo ok-1
 test "$(k -n lab-roll get deploy web -o jsonpath='{.status.readyReplicas}')" = "4" && echo ok-2
-test "$(k -n lab-roll rollout history deploy/web --no-headers | wc -l | tr -d ' ')" -ge 2 && echo ok-3
+test "$(k -n lab-roll rollout history deploy/web | grep -cE '^[0-9]+')" -ge 2 && echo ok-3
 grep -q 'nginx:1.25' /opt/course/07/answer && echo ok-4
 ```
 
@@ -315,7 +326,7 @@ spec:
       containers:
       - name: load
         image: busybox:1.36
-        command: ["/bin/sh","-c","while true; do wget -q -O- -T 1 http://web.lab-hpa >/dev/null 2>&1; done"]
+        command: ["/bin/sh","-c","for i in 1 2 3 4; do while true; do wget -q -O- -T 1 http://web.lab-hpa >/dev/null 2>&1; done & done; wait"]
 EOF
 k -n lab-hpa rollout status deploy/web --timeout=90s
 sleep 60                                  # let metrics-server scrape the new pods
@@ -333,7 +344,7 @@ for i in $(seq 1 30); do n=$(k -n lab-hpa get hpa web -o jsonpath='{.status.curr
 grep -qE '^[2-4]$' /opt/course/08/answer && echo ok-6
 ```
 
-**Pass:** all six `ok` markers. `<unknown>` in TARGETS means metrics-server or the CPU request is missing — the request must land **before** the HPA is expected to compute.
+**Pass:** all six `ok` markers. `<unknown>` in TARGETS means metrics-server or the CPU request is missing — the request must land **before** the HPA is expected to compute. Each `load` Pod runs four parallel `wget` loops: a single loop per Pod is not always enough to push the nginx Pod past 50m on a quiet node.
 
 **Cleanup.** `k delete ns lab-hpa`.
 </details>
@@ -373,7 +384,7 @@ test "$(cat /opt/course/09/answer)" = "lab-worker" && echo ok-7
 
 **Env:** kind · **Time:** 6 min · **Ref:** [T4.23](../part4-cka/T4.23-manage-and-evaluate-container-output-streams.md)
 
-**Task.** In `lab-logs` create Pod `applog` with two containers sharing an `emptyDir` volume `logvol`: container `app` (`nginx:1.27`) mounts it read-write at `/var/log/nginx`; container `reader` (`busybox:1.36`) mounts it read-only at `/var/log/nginx` and runs `tail -f /var/log/nginx/access.log`. Send one HTTP request to `app`, then write the last line `k logs applog -c reader` shows to `/opt/course/10/answer`.
+**Task.** In `lab-logs` create Pod `applog` with two containers sharing an `emptyDir` volume `logvol`: container `app` (`nginx:1.27`) mounts it read-write at `/var/log/nginx`; container `reader` (`busybox:1.36`) mounts it read-only at `/var/log/nginx` and runs `tail -F /var/log/nginx/access.log`. Send one HTTP request to `app`, then write the last line `k logs applog -c reader` shows to `/opt/course/10/answer`.
 
 **Setup** (before the timer):
 
@@ -388,12 +399,12 @@ mkdir -p /opt/course/10
 test "$(k -n lab-logs get pod applog -o jsonpath='{.spec.containers[*].name}' | wc -w | tr -d ' ')" = "2" && echo ok-1
 test "$(k -n lab-logs get pod applog -o jsonpath='{range .spec.containers[*]}{.volumeMounts[*].mountPath}{"\n"}{end}' | grep -c '/var/log/nginx')" = "2" && echo ok-2
 test "$(k -n lab-logs get pod applog -o jsonpath='{.status.phase}')" = "Running" && echo ok-3
-k -n lab-logs exec applog -c app -- wget -q -O- -T 3 http://127.0.0.1 >/dev/null 2>&1; sleep 2
+k -n lab-logs exec applog -c reader -- wget -q -O- -T 3 http://127.0.0.1 >/dev/null; sleep 2
 k -n lab-logs logs applog -c reader --tail=5 | grep -q 'GET / ' && echo ok-4
 grep -q 'GET / ' /opt/course/10/answer && echo ok-5
 ```
 
-**Pass:** all five `ok` markers. Mounting the volume over `/var/log/nginx` hides the image's stdout symlinks, so nginx writes a real `access.log` file into the shared dir.
+**Pass:** all five `ok` markers. Mounting the volume over `/var/log/nginx` hides the image's stdout symlinks, so nginx writes a real `access.log` file into the shared dir. `tail -F` (capital) keeps retrying until nginx creates the file — lowercase `-f` exits and kills the reader container. The probe runs in the `reader` container because the nginx image ships `curl`, not `wget`; containers in a Pod share the network namespace, so `127.0.0.1` reaches nginx.
 
 **Cleanup.** `k delete ns lab-logs`.
 </details>
@@ -444,7 +455,7 @@ grep -qx '200' /opt/course/11/answer && echo ok-7
 
 **Env:** kind · **Time:** 10 min · **Ref:** [T4.20](../part4-cka/T4.20-define-and-enforce-network-policies.md)
 
-**Task.** Lock down namespace `lab-netpol` without breaking the app: (a) a NetworkPolicy `default-deny` that isolates **every** Pod in the namespace for ingress **and** egress; (b) a policy that allows ingress to `app=db` Pods from `app=client` Pods on TCP 80; (c) a policy that allows `app=client` Pods egress to `app=db` Pods on TCP 80; (d) a policy that lets all Pods in the namespace resolve names via kube-dns (UDP and TCP 53). Prove `client` reaches `db` over HTTP by name and `stranger` cannot.
+**Task.** Lock down namespace `lab-netpol` without breaking the app, with four NetworkPolicies: (a) `default-deny` — isolates **every** Pod in the namespace for ingress **and** egress; (b) `allow-db-ingress-from-client` — allows ingress to `app=db` Pods from `app=client` Pods on TCP 80; (c) `allow-client-egress-to-db` — allows `app=client` Pods egress to `app=db` Pods on TCP 80; (d) `allow-dns-egress` — lets all Pods in the namespace resolve names via kube-dns (UDP and TCP 53). Prove `client` reaches `db` over HTTP by name and `stranger` cannot.
 
 **Setup** (before the timer — NetworkPolicy enforcement needs Calico, which `kind-up.sh` already installed):
 
@@ -460,14 +471,15 @@ k -n lab-netpol rollout status deploy/db --timeout=90s
 <details><summary><b>Grade</b></summary>
 
 ```bash
-test "$(k -n lab-netpol get netpol --no-headers | wc -l | tr -d ' ')" -ge 3 && echo ok-1
-k -n lab-netpol exec client -- sh -c 'wget -q -O- -T 3 http://db.lab-netpol | head -1' | grep -q 'DOCTYPE' && echo ok-2
+test "$(k -n lab-netpol get netpol --no-headers | wc -l | tr -d ' ')" -ge 4 && echo ok-1
+k -n lab-netpol get netpol default-deny allow-db-ingress-from-client allow-client-egress-to-db allow-dns-egress >/dev/null && echo ok-2
+k -n lab-netpol exec client -- sh -c 'wget -q -O- -T 3 http://db.lab-netpol | head -1' | grep -q 'DOCTYPE' && echo ok-3
 IP=$(k -n lab-netpol get svc db -o jsonpath='{.spec.clusterIP}')
-! k -n lab-netpol exec stranger -- wget -q -O- -T 3 "http://$IP" >/dev/null 2>&1 && echo ok-3
-k -n lab-netpol exec client -- nslookup kubernetes.default >/dev/null 2>&1 && echo ok-4
+! k -n lab-netpol exec stranger -- wget -q -O- -T 3 "http://$IP" >/dev/null 2>&1 && echo ok-4
+k -n lab-netpol exec client -- nslookup kubernetes.default.svc.cluster.local >/dev/null 2>&1 && echo ok-5
 ```
 
-**Pass:** all four `ok` markers. Remember the union rule: traffic needs an allow at **both** ends when both directions are isolated — an ingress allow on `db` does nothing while `client`'s egress is denied. And a full egress deny also kills DNS unless you open 53 to `kube-system`.
+**Pass:** all five `ok` markers. ok-2 fails if any of the four named policies is missing (kubectl errors on the first absent name). Remember the union rule: traffic needs an allow at **both** ends when both directions are isolated — an ingress allow on `db` does nothing while `client`'s egress is denied. And a full egress deny also kills DNS unless you open 53 to `kube-system`. Note for ok-5: busybox `nslookup` tries a dotted name as a literal FQDN, so `kubernetes.default` would NXDOMAIN even when DNS works — use the fully qualified name.
 
 **Cleanup.** `k delete ns lab-netpol`.
 </details>
@@ -491,10 +503,10 @@ mkdir -p /opt/course/13
 <details><summary><b>Grade</b></summary>
 
 ```bash
-k -n lab-dnsrec exec chk -- nslookup cache.corp.test | tail -1 | grep -q '10.99.99.99' && echo ok-1
+k -n lab-dnsrec exec chk -- nslookup cache.corp.test | grep -q 'Address: 10.99.99.99' && echo ok-1
 IP=$(k -n lab-dnsrec get svc web-svc -o jsonpath='{.spec.clusterIP}')
-k -n lab-dnsrec exec chk -- nslookup old-svc.corp.test | tail -1 | grep -q "$IP" && echo ok-2
-k -n lab-dnsrec exec chk -- nslookup kubernetes.default | grep -q '10.96.0.10' && echo ok-3
+k -n lab-dnsrec exec chk -- nslookup old-svc.corp.test | grep -q "Address: $IP" && echo ok-2
+k -n lab-dnsrec exec chk -- nslookup kubernetes.default.svc.cluster.local | grep -qE 'Address:[[:space:]]+10\.96\.0\.1$' && echo ok-3
 grep -q '10.99.99.99' /opt/course/13/answer && echo ok-4
 ```
 
@@ -562,7 +574,7 @@ k -n lab-ext get endpointslice -l kubernetes.io/service-name=ext-db -o jsonpath=
 test "$(cat /opt/course/15/answer)" = "ext-db" && echo ok-5
 ```
 
-**Pass:** all five `ok` markers. A Service with no `spec.selector` gets no controller-written EndpointSlices — the label `kubernetes.io/service-name` is the string that ties a hand-written slice to the Service (a mirrored `Endpoints` view will then also show the address).
+**Pass:** all five `ok` markers. A Service with no `spec.selector` gets no controller-written EndpointSlices — the label `kubernetes.io/service-name` is the string that ties a hand-written slice to the Service. Note `k get endpoints ext-db` stays empty: the mirroring controller only runs `Endpoints` → `EndpointSlice`, never the reverse.
 
 **Cleanup.** `k delete ns lab-ext`.
 </details>
@@ -646,7 +658,7 @@ Seven break-fix tasks. The setup injects the fault; the task text gives only the
 
 **Task.** Node `w1` reports `NotReady`. Find the cause and restore the node so it reports `Ready` — permanently: the fix must survive a reboot of `w1`. Write a one-line root cause to `/opt/course/18/answer` on `cp1`.
 
-**Setup** — on `w1` as root (`ssh w1`, `sudo -i`), before the timer:
+**Setup** — two parts, before the timer. First inject the fault on `w1` as root (`ssh w1`, `sudo -i`):
 
 ```bash
 n=$(( RANDOM % 3 + 1 ))
@@ -659,7 +671,18 @@ echo "injected"
 exit        # back out; work the task from cp1
 ```
 
-Also on `cp1`: `mkdir -p /opt/course/18`.
+Then on `cp1` — the node needs ~40 s to report `NotReady`; wait for the symptom to be visible before starting the timer:
+
+```bash
+ssh cp1 && sudo -i
+export KUBECONFIG=/etc/kubernetes/admin.conf
+mkdir -p /opt/course/18
+for i in $(seq 1 30); do
+  [ "$(k get node w1 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" != "True" ] && break
+  sleep 5
+done
+k get node w1    # should show NotReady — start the timer now
+```
 
 <details><summary><b>Grade</b></summary>
 
@@ -670,11 +693,11 @@ test "$(k get node w1 -o jsonpath='{.status.conditions[?(@.type=="Ready")].statu
 ssh w1 'systemctl is-active kubelet' | grep -qx 'active' && echo ok-2
 ssh w1 'systemctl is-enabled kubelet' | grep -qx 'enabled' && echo ok-3
 ssh w1 'systemctl is-active containerd' | grep -qx 'active' && echo ok-4
-ssh w1 'grep -q ":6443" /etc/kubernetes/kubelet.conf' && echo ok-5
+ssh w1 'sudo grep -q ":6443" /etc/kubernetes/kubelet.conf' && echo ok-5
 test -s /opt/course/18/answer && echo ok-6
 ```
 
-**Pass:** all six `ok` markers. `is-enabled` is part of the pass: a stopped **and** disabled kubelet comes back broken after every reboot. Diagnostic path: `k describe node w1` → `ssh w1` → `systemctl status kubelet containerd` → `journalctl -u kubelet -n 50 --no-pager` → `crictl info`.
+**Pass:** all six `ok` markers. `is-enabled` is part of the pass: a stopped **and** disabled kubelet comes back broken after every reboot. Diagnostic path: `k describe node w1` → `ssh w1` → `systemctl status kubelet containerd` → `sudo journalctl -u kubelet -n 50 --no-pager` → `sudo crictl info`. (`/etc/kubernetes/kubelet.conf` is root-only and `crictl` needs the containerd socket — anything beyond `systemctl status` wants `sudo` on the node.)
 
 **Cleanup.** Nothing extra once the node is healthy — the fault is the fix. Remove any half-restored files (`/etc/cni/net.d` was not touched by this break set).
 </details>
@@ -809,7 +832,7 @@ fi
 test "$(k -n kube-system get deploy coredns -o jsonpath='{.status.readyReplicas}')" = "2" && echo ok-1
 k -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -q 'cluster\.local' && echo ok-2
 ! k -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -q 'clusterX' && echo ok-3
-k -n lab-dnsfix exec client -- nslookup web.lab-dnsfix >/dev/null 2>&1 && echo ok-4
+k -n lab-dnsfix exec client -- nslookup web.lab-dnsfix.svc.cluster.local >/dev/null 2>&1 && echo ok-4
 k -n lab-dnsfix exec client -- nslookup kubernetes.default.svc.cluster.local >/dev/null 2>&1 && echo ok-5
 test -s /opt/course/22/answer && echo ok-6
 ```
@@ -846,11 +869,11 @@ sleep 60     # let a few restarts accumulate
 
 ```bash
 sed -n '1p' /opt/course/23/answer | grep -q 'DB_URL' && echo ok-1
-n=$(ssh w1 'crictl ps -q | wc -l'); test "$(sed -n '2p' /opt/course/23/answer | tr -d ' ')" = "$n" && echo "ok-2 running containers: $n"
+n=$(ssh w1 'sudo crictl ps -q | wc -l'); test "$(sed -n '2p' /opt/course/23/answer | tr -d ' ')" = "$n" && echo "ok-2 running containers: $n"
 test "$(k -n lab-inspe get pod stuck -o jsonpath='{.status.containerStatuses[0].restartCount}')" -ge 1 && echo ok-3
 ```
 
-**Pass:** all three `ok` markers. The exam-style path: `k get pod -o wide` for the node name → `ssh` → `crictl ps -a --name stuck` → `crictl logs <container-id>` (or `--tail`). `crictl` talks to the runtime socket directly and needs no API server.
+**Pass:** all three `ok` markers. The exam-style path: `k get pod -o wide` for the node name → `ssh` → `sudo crictl ps -a --name stuck` → `sudo crictl logs <container-id>` (or `--tail`). `crictl` talks to the runtime socket directly and needs no API server — but the socket is root-owned, so `crictl` wants `sudo` on the node.
 
 **Cleanup.** `k delete ns lab-inspe`.
 </details>
@@ -914,7 +937,7 @@ grep -qiE 'storageclass|persistentvolumeclaim' /opt/course/24/answer && echo ok-
 
 ## Suggested 10-task sprints
 
-Pick one row per session. Times are the sums of the targets — finishing under budget at 100% grade is the goal; the real exam averages ~6 min per task.
+Pick one row per session. Times are the sums of the targets — finishing under budget at 100% grade is the goal. The targets sum to ~178 min across the 24 tasks (≈7.5 min each on average), looser than the real exam's ~6 min per task: the `vms` tasks carry unavoidable wait time (rollouts, etcd restarts, a node reboot) that exam tasks compress. Treat the gap as stretch headroom — if a sprint feels easy, tighten the budget before raising it.
 
 | Sprint | Tasks (in order) | Target | Envs | Focus |
 |---|---|---|---|---|

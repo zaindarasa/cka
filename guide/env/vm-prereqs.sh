@@ -13,6 +13,16 @@
 set -euo pipefail
 K8S_MINOR=${K8S_MINOR:-1.37}
 K8S_PATCH=${K8S_PATCH:-}
+# K8S_PATCH is an apt version glob inside the single minor repo line that
+# K8S_MINOR selects (stable:/v<minor>/deb): '1.36.5-*' needs K8S_MINOR=1.36.
+# Fail before touching the node on a mismatch.
+if [[ -n $K8S_PATCH ]]; then
+  IFS=. read -r patch_major patch_minor _ <<<"$K8S_PATCH"
+  if [[ $patch_major.$patch_minor != "$K8S_MINOR" ]]; then
+    echo "K8S_PATCH '$K8S_PATCH' requires K8S_MINOR=$patch_major.$patch_minor (got '$K8S_MINOR')" >&2
+    exit 1
+  fi
+fi
 swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab
 printf 'overlay\nbr_netfilter\n' > /etc/modules-load.d/k8s.conf && modprobe overlay br_netfilter
 cat > /etc/sysctl.d/k8s.conf <<EOT

@@ -425,6 +425,7 @@ Five tasks, all `kind`.
 
 ```bash
 env/kind-addons.sh helm                  # once per machine; installs to ~/.local/bin
+env/kind-addons.sh gateway-api-crds      # the Traefik chart renders a GatewayClass — CRDs must exist first
 env/kind-addons.sh traefik               # chart 42.1.3, Traefik v3.7.x
 k create ns lab-expose
 k -n lab-expose create deploy web --image=nginx:1.27 --replicas=2 --port=80
@@ -610,7 +611,7 @@ test "$(k -n lab-pv exec pv-app -- cat /data/hello.txt)" = "cka" && echo ok-5
 test "$(cat /opt/course/16/answer)" = "lab-pv/pvc-static" && echo ok-6
 ```
 
-**Pass:** all six `ok` markers. The classic failure: omit `storageClassName` on the claim and the admission plugin injects the default class — your claim dynamically provisions a different PV while `pv-static` sits `Available` forever.
+**Pass:** all six `ok` markers. The classic failure: omit `storageClassName` on the claim and the admission plugin injects the default class — and because the claim still carries its `selector`, the dynamic provisioner refuses it outright (`failed to provision volume ... claim.Spec.Selector is not supported`), so the claim and the Pod stay `Pending` while `pv-static` never binds. On a provisioner that ignores selectors the claim would instead dynamically provision a different PV.
 
 **Cleanup.** `k delete ns lab-pv`; `k delete pv pv-static`; `docker exec lab-worker rm -rf /mnt/static-data` on each node where the Pod ran.
 </details>
@@ -632,8 +633,8 @@ mkdir -p /opt/course/17
 <details><summary><b>Grade</b></summary>
 
 ```bash
-test "$(k get sc fast-local -o jsonpath='{.metadata.annotations["storageclass.kubernetes.io/is-default-class"]}')" = "true" && echo ok-1
-test "$(k get sc standard -o jsonpath='{.metadata.annotations["storageclass.kubernetes.io/is-default-class"]}')" != "true" && echo ok-2
+test "$(k get sc fast-local -o jsonpath='{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}')" = "true" && echo ok-1
+test "$(k get sc standard -o jsonpath='{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}')" != "true" && echo ok-2
 test "$(k get sc fast-local -o jsonpath='{.provisioner}/{.volumeBindingMode}/{.reclaimPolicy}')" = "rancher.io/local-path/WaitForFirstConsumer/Delete" && echo ok-3
 test "$(k -n lab-dyn get pvc data-fast -o jsonpath='{.spec.storageClassName}')" = "fast-local" && echo ok-4
 test "$(k -n lab-dyn get pvc data-fast -o jsonpath='{.status.phase}')" = "Bound" && echo ok-5
@@ -818,7 +819,9 @@ k -n lab-dnsfix rollout status deploy/web --timeout=90s
 mkdir -p /opt/course/22
 # the break — FAULT=1 or FAULT=2:
 if [ "${FAULT:-1}" = "2" ]; then
-  k -n kube-system get cm coredns -o yaml > /tmp/coredns-orig.yaml
+  # strip server-set fields so a later `k apply -f /tmp/coredns-orig.yaml` restore
+  # does not fail on a stale resourceVersion
+  k -n kube-system get cm coredns -o yaml | grep -vE '^\s+(resourceVersion|uid|creationTimestamp):' > /tmp/coredns-orig.yaml
   sed 's/cluster\.local/clusterX.local/g' /tmp/coredns-orig.yaml | k apply -f -
   k -n kube-system rollout restart deploy coredns
 else
@@ -928,7 +931,7 @@ test "$(k -n lab-pend get pvc data -o jsonpath='{.status.phase}')" = "Bound" && 
 grep -qiE 'storageclass|persistentvolumeclaim' /opt/course/24/answer && echo ok-3
 ```
 
-**Pass:** all three `ok` markers. `FailedScheduling` + "unbound immediate PersistentVolumeClaims" points at the claim; `k describe pvc` shows it waits for a provisioner that does not exist. Both valid fixes pass: create the missing `gold-fast` StorageClass (any working provisioner — kind's is `rancher.io/local-path`), or delete and recreate the claim on a class that exists (the field is immutable — patching it is not an option).
+**Pass:** all three `ok` markers. `FailedScheduling` + "unbound immediate PersistentVolumeClaims" points at the claim; `k describe pvc` shows it waits for a provisioner that does not exist. Both valid fixes pass: create the missing `gold-fast` StorageClass (any working provisioner — kind's is `rancher.io/local-path`, which requires `volumeBindingMode: WaitForFirstConsumer`; with `Immediate` it fails `configuration error, no node was specified` and the claim stays `Pending`), or delete and recreate the claim on a class that exists (the field is immutable — patching it is not an option).
 
 **Cleanup.** `k delete ns lab-pend`; `k delete sc gold-fast` if you created it.
 </details>

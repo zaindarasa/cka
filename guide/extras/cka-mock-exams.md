@@ -26,7 +26,7 @@
 
 | Env | Tasks | Needs before the clock |
 |---|---|---|
-| `kind` (context `kind-lab`) | 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 4 and 11: `helm`, `metallb` + address pool, `traefik` — installed by Appendix 1A. |
+| `kind` (context `kind-lab`) | 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 4 and 11: `helm`, `metallb` + address pool, `gateway-api-crds`, `traefik` — installed by Appendix 1A (the Gateway API CRDs must exist before the Traefik chart installs). |
 | `vms` (`cp1`, `w1`, `w2`; kubeadm 1.37.x, Calico, etcd 3.7.0) | 1, 2, 3, 14 | Healthy 1.37.x cluster, `etcdctl`/`etcdutl` on `cp1` (see [T4.04](../part4-cka/T4.04-manage-the-lifecycle-of-kubernetes-clusters.md) §7.0). Appendix 1A injects two faults on it. |
 
 All `vms` faults are injected before the clock starts. On this cluster no injected fault kills `kubectl`, but one dependency is real: Task 1's restored `archive-web` Pods can only report ready once the node and scheduler faults are repaired — fix Tasks 2 and 3 before Task 1's final rollout check, or come back to it at the end.
@@ -150,7 +150,7 @@ k config use-context kind-lab
 k get nodes
 sudo mkdir -p /opt/course/{04,05,06,08,13,16} && sudo chown -R "$USER" /opt/course   # answer files live on this host
 
-# --- add-ons for tasks 4 (helm release) and 11 (Ingress) — helm, metallb, traefik ---
+# --- add-ons for tasks 4 (helm release) and 11 (Ingress) — helm, metallb, gateway-api-crds, traefik ---
 env/kind-addons.sh helm
 export PATH="$HOME/.local/bin:$PATH"
 env/kind-addons.sh metallb
@@ -173,6 +173,7 @@ spec:
   ipAddressPools: [lab-pool]
 YAML
 do echo "waiting for the MetalLB webhook"; sleep 5; done
+env/kind-addons.sh gateway-api-crds   # Traefik's chart renders a GatewayClass — CRDs must exist first
 env/kind-addons.sh traefik
 k -n traefik rollout status deploy/traefik --timeout=300s
 k -n traefik get svc traefik   # must show an EXTERNAL-IP
@@ -472,12 +473,13 @@ R=$(helm -n e1-helm history site | awk 'NR>1{print $1}' | sort -n | tail -1)
 helm -n e1-helm status site | grep -q 'STATUS: deployed' && echo "release deployed"
 test "${R:-0}" -gt 1 && echo "upgraded via helm (rev $R)"   # kubectl edits leave this at 1
 test "$(k -n e1-helm get deploy site -o jsonpath='{.spec.template.spec.containers[0].image}')" = "nginx:1.27" && echo "image fixed"
+k -n e1-helm rollout status deploy/site --timeout=90s >/dev/null 2>&1   # settle: readyReplicas can lag a few seconds
 test "$(k -n e1-helm get deploy site -o jsonpath='{.status.readyReplicas}')" = "1" && echo "ready"
 k -n e1-helm run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c 'sleep 2; wget -qO- -T3 http://site | grep -o helm-ok' | grep -q helm-ok && echo "svc answers"
 grep -qx "$R" /opt/course/04/revision.txt && echo "file ok"
 ```
 
-**Pass:** all five — the expected fix is `helm upgrade site /opt/course/04/site-chart --set image.tag=1.27 -n e1-helm` (or correcting `values.yaml` first). The `helm history` check proves the fix went through the release — a `kubectl set image` edit leaves revision at 1. **Partial credit:** yes — 4 pts for a working app fixed by hand (revision still 1) or a correct upgrade with the file missing/wrong.
+**Pass:** all six — the expected fix is `helm upgrade site /opt/course/04/site-chart --set image.tag=1.27 -n e1-helm` (or correcting `values.yaml` first). The `helm history` check proves the fix went through the release — a `kubectl set image` edit leaves revision at 1. **Partial credit:** yes — 4 pts for a working app fixed by hand (revision still 1) or a correct upgrade with the file missing/wrong.
 </details>
 
 <details>
@@ -502,6 +504,7 @@ grep -q '^yes$' /opt/course/05/rbac.txt && grep -q '^no$' /opt/course/05/rbac.tx
 
 ```bash
 test "$(k -n e1-web get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}')" = "nginx:1.25" && echo "old image back"
+k -n e1-web rollout status deploy/web --timeout=90s >/dev/null 2>&1   # settle: readyReplicas can lag a few seconds
 test "$(k -n e1-web get deploy web -o jsonpath='{.status.readyReplicas}')" = "2" && echo "all ready"
 REV=$(k -n e1-web get deploy web -o jsonpath='{.metadata.annotations.deployment\.kubernetes\.io/revision}')
 test "$(cat /opt/course/06/revision.txt)" = "$REV" && echo "file ok (current revision $REV)"
@@ -542,6 +545,7 @@ test "$(k get pv e1-pv -o jsonpath='{.spec.accessModes[0]}')" = "ReadWriteOnce" 
 test "$(k get pv e1-pv -o jsonpath='{.spec.persistentVolumeReclaimPolicy}')" = "Retain" && \
 test "$(k get pv e1-pv -o jsonpath='{.spec.storageClassName}')" = "manual" && \
 test "$(k get pv e1-pv -o jsonpath='{.spec.hostPath.path}')" = "/mnt/e1data" && echo "pv correct"
+k -n e1-vol wait --for=condition=Ready pod/e1-volpod --timeout=90s >/dev/null 2>&1   # settle: the bind and the mount can lag a few seconds
 test "$(k -n e1-vol get pvc e1-pvc -o jsonpath='{.status.phase}')" = "Bound" && echo "bound"
 test "$(k -n e1-vol exec e1-volpod -- cat /data/marker.txt)" = "hello cka" && echo "data ok"
 grep -qi bound /opt/course/08/pv-status.txt && echo "file ok"
@@ -554,6 +558,7 @@ grep -qi bound /opt/course/08/pv-status.txt && echo "file ok"
 <summary>Task 9 — broken ConfigMap reference (5 pts)</summary>
 
 ```bash
+k -n e1-app rollout status deploy/logger --timeout=90s >/dev/null 2>&1   # settle: readyReplicas can lag a few seconds
 test "$(k -n e1-app get deploy logger -o jsonpath='{.status.readyReplicas}')" = "1" && echo "logger running"
 k -n e1-app get pods | grep -v CreateContainerConfigError | grep -q Running && echo "no config error"
 ```
@@ -565,6 +570,7 @@ k -n e1-app get pods | grep -v CreateContainerConfigError | grep -q Running && e
 <summary>Task 10 — binding without touching the claim (5 pts)</summary>
 
 ```bash
+k -n e1-db wait --for=condition=Ready pod/pg-app --timeout=120s >/dev/null 2>&1   # settle: binding and scheduling can lag a few seconds
 test "$(k -n e1-db get pvc pgdata -o jsonpath='{.status.phase}')" = "Bound" && echo "bound"
 test "$(k -n e1-db get pvc pgdata -o jsonpath='{.spec.volumeName}')" = "pg-vol" && echo "bound to pg-vol"
 test "$(k -n e1-db get pod pg-app -o jsonpath='{.status.phase}')" = "Running" && echo "pod running"
@@ -606,7 +612,7 @@ k -n e1-client exec client -- sh -c 'wget -qO- -T4 http://records' | grep -q rec
 test "$(k -n e1-edge get svc edge -o jsonpath='{.spec.type}')" = "NodePort" && echo "type ok"
 NP=$(k -n e1-edge get svc edge -o jsonpath='{.spec.ports[0].nodePort}'); grep -qx "$NP" /opt/course/13/nodeport.txt && echo "file ok"
 W=$(k get node lab-worker -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
-k -n e1-edge run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c "wget -qO- -T3 http://$W:$NP | grep -o nginx" | grep -q nginx && echo "nodeport answers"
+k -n e1-edge run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c "sleep 2; wget -qO- -T3 http://$W:$NP | grep -o nginx" | grep -q nginx && echo "nodeport answers"
 ```
 
 **Pass:** all three. **Partial credit:** yes — 2 pts for the Service alone.
@@ -630,9 +636,10 @@ test -n "$GOT" && test "$GOT" -ge $((${EXP%d}-1)) && test "$GOT" -le $((${EXP%d}
 <summary>Task 15 — node affinity (5 pts)</summary>
 
 ```bash
+k -n e1-cache rollout status deploy/cache --timeout=90s >/dev/null 2>&1   # settle: readyReplicas can lag a few seconds
 test "$(k -n e1-cache get pods -o jsonpath='{.items[*].spec.nodeName}' | tr ' ' '\n' | sort -u)" = "lab-worker" && echo "all on ssd node"
 test "$(k -n e1-cache get deploy cache -o jsonpath='{.status.readyReplicas}')" = "3" && echo "3 ready"
-k -n e1-cache get deploy cache -o yaml | grep -q requiredDuringScheduling && echo "affinity present"
+k -n e1-cache get deploy cache -o jsonpath='{.spec.template.spec}' | grep -q requiredDuringScheduling && echo "affinity present"
 ```
 
 **Pass:** all three. **Partial credit:** yes — 3 pts if `nodeSelector` was used instead of node affinity (functionally right, wrong mechanism per the task).
@@ -647,6 +654,7 @@ test -s /opt/course/16/.pre-drain-uids && \
   && echo "pre-drain pods evicted"
 test "$(k get node lab-worker2 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = "True" && echo "ready"
 ! k get node lab-worker2 -o jsonpath='{.spec.unschedulable}' | grep -q true && echo "schedulable"
+k -n e1-drain rollout status deploy/web --timeout=180s >/dev/null 2>&1   # settle: evicted Pods need time to come back
 test "$(k -n e1-drain get deploy web -o jsonpath='{.status.readyReplicas}')" = "4" && echo "web back"
 ```
 
@@ -657,6 +665,7 @@ test "$(k -n e1-drain get deploy web -o jsonpath='{.status.readyReplicas}')" = "
 <summary>Task 17 — Deployment + PDB (4 pts)</summary>
 
 ```bash
+k -n e1-pay rollout status deploy/pay --timeout=90s >/dev/null 2>&1   # settle: readyReplicas can lag a few seconds
 test "$(k -n e1-pay get deploy pay -o jsonpath='{.status.readyReplicas}')" = "3" && echo "3 running"
 test "$(k -n e1-pay get pdb pay-pdb -o jsonpath='{.spec.minAvailable}')" = "2" && echo "pdb ok"
 ```

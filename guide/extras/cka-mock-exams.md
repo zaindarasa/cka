@@ -1337,7 +1337,7 @@ done
 ```bash
 test "$(k -n e2-batch get deploy batch -o jsonpath='{.status.readyReplicas}')" = "2" && echo "scheduled"
 test "$(k -n e2-batch get pods -o jsonpath='{.items[*].spec.nodeName}' | tr ' ' '\n' | sort -u)" = "lab-worker2" && echo "on edge node"
-k -n e2-batch get deploy batch -o yaml | grep -q 'workload' && echo "toleration added"
+test "$(k -n e2-batch get deploy batch -o jsonpath='{.spec.template.spec.tolerations[?(@.key=="workload")].value}')" = batch && echo "toleration added"
 test "$(k get node lab-worker2 -o jsonpath='{.spec.taints[?(@.key=="workload")].value}')" = batch && echo "taint intact"
 ```
 
@@ -2065,7 +2065,7 @@ grep -qx 3 /opt/course/13/etl-count.txt && echo "file ok"
 test "$(k -n e3-ws get deploy writer -o jsonpath='{.status.readyReplicas}')" = "1" && echo "running"
 P=$(k -n e3-ws get pod -l app=writer -o jsonpath='{.items[0].metadata.name}')
 test "$(k -n e3-ws exec "$P" -- cat /data/out.txt 2>/dev/null)" = "report" && echo "file written"
-k -n e3-ws get deploy writer -o yaml | grep -qE 'fsGroup|supplementalGroups|runAsGroup' && echo "group access set"
+k -n e3-ws get deploy writer -o jsonpath='{.spec.template.spec.securityContext}{.spec.template.spec.containers[*].securityContext}' | grep -qE 'fsGroup|supplementalGroups|runAsGroup' && echo "group access set"
 ```
 
 **Pass:** all three — the init container left `/data` as `2770 root:2000`, so the fix is giving the app container group 2000: `fsGroup: 2000`, `supplementalGroups: [2000]` or `runAsGroup: 2000` at Pod level. **Partial credit:** yes — 4 pts for a working write achieved by `runAsUser: 0` instead (works, but loses the least-privilege point — flag it).

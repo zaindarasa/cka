@@ -11,6 +11,7 @@
   * [7-week CKA study plan](extras/cka-study-plan.md)
   * [CKA timed task bank](extras/cka-task-bank.md)
   * [CKA mock exams](extras/cka-mock-exams.md)
+  * [kubectl cheat sheet](extras/kubectl-cheatsheet.md)
 * Part 1 - Linux for Kubernetes (15 of 15 written)
   * [T1.01 Bash shell essentials for exam speed](part1-linux/T1.01-bash-shell-essentials-for-exam-speed.md)
   * [T1.02 Text processing: grep, sed, awk, cut, sort, find, xargs](part1-linux/T1.02-text-processing-grep-sed-awk-cut.md)

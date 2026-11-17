@@ -46,7 +46,7 @@ Decisions:
 | T3.21 | Understand API depreciations (API deprecations and migration) | 8 | wf | FAIL (0B/2M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.01 | Prepare underlying infrastructure for a Kubernetes cluster | 5 | wf | FAIL (0B/3M/13m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.02 | Create and manage Kubernetes clusters using kubeadm | 6 | wf | PASS (0B/0M/8m) | 0 | PASS |  |
-| T4.03 | Understand extension interfaces: CNI, CSI, CRI | 7 | wf | FAIL (0B/5M/14m) | 1 | FIXED | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: 1 expected block + VM-only items (section 11) |
+| T4.03 | Understand extension interfaces: CNI, CSI, CRI | 7 | wf | FAIL (0B/5M/14m) | 1 | FIXED | 16 open items (VERIFY-LIST.md); real kind v0.33.0/v1.37.0 output captured 2026-11-16 |
 | T4.05 | Implement and configure a highly-available control plane | 8 | wf | FAIL (0B/2M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.17 | Understand connectivity between Pods | 8 | wf | PASS (0B/0M/8m) | 0 | PASS |  |
 | T3.02 | Choose and use the right workload resource | 9 | wf | PASS (0B/0M/8m) | 0 | PASS |  |
@@ -63,11 +63,11 @@ Decisions:
 | T3.23 | Use built-in CLI tools to monitor Kubernetes applications | 9 | wf | PASS (0B/0M/11m) | 0 | PASS |  |
 | T4.07 | Use Helm and Kustomize to install cluster components | 9 | wf | FAIL (0B/1M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.08 | Understand CRDs, install and configure operators | 10 | wf | FAIL (0B/1M/7m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.09 | Application deployments: rolling updates and rollbacks (admin view) | 10 | wf | FAIL (0B/2M/9m) | 1 | FIXED | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
+| T4.09 | Application deployments: rolling updates and rollbacks (admin view) | 10 | wf | FAIL (0B/2M/9m) | 1 | FIXED | 9 open items (VERIFY-LIST.md); real kind v0.33.0/v1.37.0 output captured 2026-11-16 |
 | T4.10 | Use ConfigMaps and Secrets to configure applications (admin view, incl. encryption at rest) | 10 | wf | PASS (0B/0M/7m) | 0 | PASS |  |
 | T4.11 | Configure workload autoscaling | 10 | wf | FAIL (0B/2M/4m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.12 | Primitives for robust, self-healing application deployments | 10 | wf | FAIL (0B/4M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.14 | Configure volume types, access modes and reclaim policies | 11 | wf | FAIL (0B/2M/5m) | 1 | FIXED | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
+| T4.14 | Configure volume types, access modes and reclaim policies | 11 | wf | FAIL (0B/2M/5m) | 1 | FIXED | 6 open items (VERIFY-LIST.md); real kind v0.33.0/v1.37.0 output captured 2026-11-16 |
 | T4.18 | Use ClusterIP, NodePort, LoadBalancer service types and endpoints | 10 | wf | PASS (0B/0M/5m) | 0 | PASS | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
 | T4.19 | Understand and use CoreDNS | 11 | wf | FAIL (0B/1M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.20 | Define and enforce Network Policies | 11 | wf | PASS (0B/0M/9m) | 0 | PASS |  |

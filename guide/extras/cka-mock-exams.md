@@ -728,7 +728,7 @@ rm -rf /opt/course /root/etcd.yaml.bak
 
 | Env | Tasks | Needs before the clock |
 |---|---|---|
-| `kind` (context `kind-lab`) | 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 9, 11 and 12: `helm`, `metallb` + pool, `traefik`, `metrics-server` — installed by Appendix 2A. |
+| `kind` (context `kind-lab`) | 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 | Standard `lab` cluster. Add-ons for tasks 9, 11 and 12: `helm`, `metallb` + pool, `gateway-api-crds` (the traefik chart creates a `GatewayClass`), `traefik`, `metrics-server` — installed by Appendix 2A. |
 | `vms` (`cp1`, `w1`, `w2`; kubeadm, Calico, etcd 3.7.0) | 1, 2, 3, 4, 5 | **Cluster built at v1.36.5** (v1.36 apt repo, `env/vm-prereqs.sh`, `kubeadm init` per [T4.02](../part4-cka/T4.02-create-and-manage-kubernetes-clusters-using.md)). `etcdctl`/`etcdutl` on `cp1`. Appendix 2A brings the VMs to that state and injects the timed faults. |
 
 This exam is the kubeadm-heavy one: 5 of 17 tasks are on the `vms` cluster. One injected fault blocks the other `vms` tasks until you find and repair it — work out the order yourself. That is intentional.
@@ -899,6 +899,7 @@ spec:
   ipAddressPools: [lab-pool]
 YAML
 do echo "waiting for the MetalLB webhook"; sleep 5; done
+env/kind-addons.sh gateway-api-crds   # required: the traefik chart ships a GatewayClass object
 env/kind-addons.sh traefik
 env/kind-addons.sh metrics-server
 k -n traefik rollout status deploy/traefik --timeout=300s
@@ -943,7 +944,7 @@ metadata:
   name: report-a
   namespace: e2-crd
 spec:
-  mode: turbo        # not in the schema's enum — the API rejects this manifest
+  mode: turbo
   note: pilot
 YAML
 
@@ -953,6 +954,7 @@ k -n e2-net run db --image=busybox:1.36 -l app=db -- \
   sh -c 'mkdir -p /www && echo db-ok > /www/index.html && exec httpd -f -p 5432 -h /www'
 k -n e2-net run client --image=busybox:1.36 -l role=client -- sleep 3600
 k -n e2-net run other --image=busybox:1.36 -l role=other -- sleep 3600
+k -n e2-net expose pod db --port=5432   # the grader reaches the Pod through this Service's DNS name
 cat <<'YAML' | k -n e2-net apply -f -
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -972,8 +974,29 @@ YAML
 
 # --- task 8 objects ---
 k create ns e2-api
-k -n e2-api create deploy api --image=nginx:1.27 --replicas=2
-k -n e2-api patch deploy api -p '{"spec":{"template":{"spec":{"containers":[{"name":"nginx","readinessProbe":{"httpGet":{"path":"/healthz","port":80},"periodSeconds":2}}]}}}}'
+# the bad readinessProbe is baked into the template on purpose: a create+patch would roll a
+# new ReplicaSet whose Pods never go ready, so the old (probe-free) Pods keep serving and the
+# Service never actually breaks — the fault must live in the only ReplicaSet
+cat <<'YAML' | k -n e2-api apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: api}
+  template:
+    metadata:
+      labels: {app: api}
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27
+        readinessProbe:
+          httpGet: {path: /healthz, port: 80}
+          periodSeconds: 2
+YAML
 k -n e2-api expose deploy api --port=80
 
 # --- task 9 objects ---
@@ -1243,9 +1266,10 @@ k -n e2-net describe netpol db-guard | grep -q 'role=client' && echo "selector f
 test "$(k -n e2-api get endpointslices -l kubernetes.io/service-name=api -o jsonpath='{range .items[*].endpoints[?(@.conditions.ready==true)]}{.addresses[0]}{"\n"}{end}' | grep -c .)" = "2" && echo "ready endpoints"
 test "$(k -n e2-api get deploy api -o jsonpath='{.status.readyReplicas}')" = "2" && echo "pods ready"
 k -n e2-api run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c 'sleep 2; wget -qO- -T3 http://api | grep -o nginx' | grep -q nginx && echo "svc answers"
+test "$(k -n e2-api get deploy api -o jsonpath='{.spec.template.spec.containers[0].readinessProbe.httpGet.path}')" = "/" && echo "probe path /"
 ```
 
-**Pass:** all three — probe path back to `/`. **Partial credit:** no — without ready endpoints there is nothing to grade.
+**Pass:** all four — probe path back to `/`, not deleted (removing the probe also restores endpoints, so it must be checked). **Partial credit:** no — without ready endpoints there is nothing to grade.
 </details>
 
 <details>
@@ -1255,7 +1279,11 @@ k -n e2-api run t-$RANDOM --rm -i --restart=Never --image=busybox:1.36 -- sh -c 
 test "$(k -n e2-ing get ingress shop -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.name}')" = "shop" && echo "name fixed"
 test "$(k -n e2-ing get ingress shop -o jsonpath='{.spec.rules[0].http.paths[0].backend.service.port.number}')" = "80" && echo "port fixed"
 LB=$(k -n traefik get svc traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-docker run --rm --network kind curlimages/curl:8.12.1 -s -m5 --resolve "shop.local:80:$LB" http://shop.local/ | grep -qi nginx && echo "page served"
+# bounded retry: traefik can take a few seconds to reload routes after the Ingress is fixed
+for i in {1..10}; do
+  docker run --rm --network kind curlimages/curl:8.12.1 -s -m5 --resolve "shop.local:80:$LB" http://shop.local/ | grep -qi nginx && { echo "page served"; break; }
+  sleep 6
+done
 ```
 
 **Pass:** all three. **Partial credit:** yes — 4 pts for one of {name, port} fixed (page still fails, partial diagnosis).
@@ -1293,10 +1321,14 @@ test "$(cat /opt/course/11/last-log.txt 2>/dev/null)" = "$(k -n e2-load logs "$T
 test "$(k -n e2-hpa get hpa web -o jsonpath='{.spec.minReplicas}')" = "2" && \
 test "$(k -n e2-hpa get hpa web -o jsonpath='{.spec.maxReplicas}')" = "6" && \
 test "$(k -n e2-hpa get hpa web -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}')" = "50" && echo "hpa correct"
-k -n e2-hpa get hpa web | grep -E 'cpu: [0-9]+%/' >/dev/null && echo "metrics flowing"
+# bounded retry: the first metrics sample takes ~60 s to reach the HPA
+for i in {1..18}; do
+  k -n e2-hpa get hpa web | grep -E 'cpu: [0-9]+%/' && { echo "metrics flowing"; break; }
+  sleep 10
+done
 ```
 
-**Pass:** spec correct and `TARGETS` shows a live percentage (may take ~60 s). **Partial credit:** yes — 4 pts for a correct spec with metrics not yet reporting (`<unknown>` — note it as a timing issue, not a fault).
+**Pass:** spec correct and `TARGETS` shows a live percentage (may take ~60 s; the retry covers it). **Partial credit:** yes — 4 pts for a correct spec with metrics still `<unknown>` after the retry window (note it as a timing issue, not a fault).
 </details>
 
 <details>
@@ -1330,11 +1362,12 @@ test "$(k -n e2-shop get quota quota -o jsonpath='{.spec.hard.limits\.cpu}' | tr
 
 ```bash
 test "$(k get sc fast -o jsonpath='{.provisioner}')" = "rancher.io/local-path" && echo "sc created"
+test "$(k -n e2-data get pvc cache -o jsonpath='{.spec.storageClassName}')" = "fast" && echo "claim kept class fast"
 test "$(k -n e2-data get pvc cache -o jsonpath='{.status.phase}')" = "Bound" && echo "bound"
 test "$(k -n e2-data get pod cache-pod -o jsonpath='{.status.phase}')" = "Running" && echo "pod running"
 ```
 
-**Pass:** all three — copy the provisioner (and `volumeBindingMode`) from the existing `standard` class. **Partial credit:** yes — 4 pts if the SC exists but the claim only binds because the candidate changed the PVC's class (the task asked for a `fast` class).
+**Pass:** all four — copy the provisioner (and `volumeBindingMode`) from the existing `standard` class. **Partial credit:** yes — 4 pts if the SC exists but the claim was re-created on another class instead of staying on `fast`.
 </details>
 
 <details>
@@ -1571,7 +1604,7 @@ exit
 
 ```bash
 #!/usr/bin/env bash
-# run from the repo root so env/kind-addons.sh resolves
+# run from the guide/ directory so env/kind-addons.sh resolves
 set -euo pipefail
 shopt -s expand_aliases; alias k=kubectl
 k config use-context kind-lab
@@ -2109,6 +2142,7 @@ k config use-context kind-lab
 for n in $(k get ns -o name | grep 'namespace/e3-' | cut -d/ -f2); do k delete ns "$n" --wait=false; done
 k delete ns prod --ignore-not-found
 k delete pv shared keep --ignore-not-found
+k delete clusterrolebinding/node-reader clusterrole/node-reader --ignore-not-found   # task 5's cluster-scoped RBAC — names as commonly written; check `k get clusterrole,clusterrolebinding | grep node` for other names
 helm uninstall traefik -n traefik 2>/dev/null; helm uninstall metallb -n metallb-system 2>/dev/null
 kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml 2>/dev/null || true
 rm -rf /opt/course

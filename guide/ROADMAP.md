@@ -2,6 +2,8 @@
 
 All 76 topics in learning order. Written lessons are links; the rest are planned.
 
+**Status key:** `ready` = passed its first review clean. `written (1 review + 1 fix)` = reviewed once and fixed once, not re-checked. `written` = drafted, review pending. `not written yet` = planned. This column tracks **review status only** — it says nothing about whether the lesson's command output was captured on a live cluster. For capture status see the `REAL OUTPUT (...)` vs `EXPECTED OUTPUT (not captured)` labels inside each lesson and the generated inventory in `VERIFY-LIST.md`.
+
 ## Part 1 - Linux for Kubernetes
 
 | ID | Topic | Hours | Status |
@@ -64,7 +66,7 @@ All 76 topics in learning order. Written lessons are links; the rest are planned
 | T3.21 | [Understand API depreciations (API deprecations and migration)](part3-ckad/T3.21-understand-api-depreciations-api-deprecations-and.md) | 2 | written (1 review + 1 fix) |
 | T3.22 | [Utilize container logs](part3-ckad/T3.22-utilize-container-logs.md) | 1.5 | ready |
 | T3.23 | [Use built-in CLI tools to monitor Kubernetes applications](part3-ckad/T3.23-use-built-in-cli-tools-to.md) | 1.5 | ready |
-| T3.24 | Debugging in Kubernetes | 3 | not written yet |
+| T3.24 | [Debugging in Kubernetes](part3-ckad/T3.24-debugging-in-kubernetes.md) | 3 | written (1 review + 1 fix) |
 
 ## Part 4 - CKA
 
@@ -82,18 +84,18 @@ All 76 topics in learning order. Written lessons are links; the rest are planned
 | T4.10 | [Use ConfigMaps and Secrets to configure applications (admin view, incl. encryption at rest)](part4-cka/T4.10-use-configmaps-and-secrets-to-configure.md) | 2 | ready |
 | T4.11 | [Configure workload autoscaling](part4-cka/T4.11-configure-workload-autoscaling.md) | 2.5 | written (1 review + 1 fix) |
 | T4.12 | [Primitives for robust, self-healing application deployments](part4-cka/T4.12-primitives-for-robust-self-healing-application.md) | 2 | written (1 review + 1 fix) |
-| T4.13 | [Configure Pod admission and scheduling (limits, node affinity, etc.)](part4-cka/T4.13-configure-pod-admission-and-scheduling-limits.md) | 4 | written |
+| T4.13 | [Configure Pod admission and scheduling (limits, node affinity, etc.)](part4-cka/T4.13-configure-pod-admission-and-scheduling-limits.md) | 4 | written (1 review + 1 fix) |
 | T4.14 | [Configure volume types, access modes and reclaim policies](part4-cka/T4.14-configure-volume-types-access-modes-and.md) | 2 | written (1 review + 1 fix) |
-| T4.15 | Manage persistent volumes and persistent volume claims | 2 | not written yet |
-| T4.16 | Implement storage classes and dynamic volume provisioning | 2 | not written yet |
+| T4.15 | [Manage persistent volumes and persistent volume claims](part4-cka/T4.15-manage-persistent-volumes-and-persistent-volume.md) | 2 | written (1 review + 1 fix) |
+| T4.16 | [Implement storage classes and dynamic volume provisioning](part4-cka/T4.16-implement-storage-classes-and-dynamic-volume.md) | 2 | written (1 review + 1 fix) |
 | T4.17 | [Understand connectivity between Pods](part4-cka/T4.17-understand-connectivity-between-pods.md) | 2.5 | ready |
 | T4.18 | [Use ClusterIP, NodePort, LoadBalancer service types and endpoints](part4-cka/T4.18-use-clusterip-nodeport-loadbalancer-service-types.md) | 2.5 | ready |
 | T4.19 | [Understand and use CoreDNS](part4-cka/T4.19-understand-and-use-coredns.md) | 2.5 | written (1 review + 1 fix) |
 | T4.20 | [Define and enforce Network Policies](part4-cka/T4.20-define-and-enforce-network-policies.md) | 2.5 | ready |
 | T4.21 | [Know how to use Ingress controllers and Ingress resources](part4-cka/T4.21-know-how-to-use-ingress-controllers.md) | 2.5 | ready |
-| T4.22 | [Use the Gateway API to manage Ingress traffic](part4-cka/T4.22-use-the-gateway-api-to-manage.md) | 3.5 | written |
+| T4.22 | [Use the Gateway API to manage Ingress traffic](part4-cka/T4.22-use-the-gateway-api-to-manage.md) | 3.5 | ready |
 | T4.23 | [Manage and evaluate container output streams](part4-cka/T4.23-manage-and-evaluate-container-output-streams.md) | 1.5 | written (1 review + 1 fix) |
 | T4.24 | [Monitor cluster and application resource usage](part4-cka/T4.24-monitor-cluster-and-application-resource-usage.md) | 1.5 | written (1 review + 1 fix) |
-| T4.25 | [Troubleshoot cluster components](part4-cka/T4.25-troubleshoot-cluster-components.md) | 4 | written |
-| T4.26 | Troubleshoot clusters and nodes | 4 | not written yet |
+| T4.25 | [Troubleshoot cluster components](part4-cka/T4.25-troubleshoot-cluster-components.md) | 4 | ready |
+| T4.26 | [Troubleshoot clusters and nodes](part4-cka/T4.26-troubleshoot-clusters-and-nodes.md) | 4 | written (1 review + 1 fix) |
 | T4.27 | [Troubleshoot services and networking](part4-cka/T4.27-troubleshoot-services-and-networking.md) | 3.5 | written (1 review + 1 fix) |

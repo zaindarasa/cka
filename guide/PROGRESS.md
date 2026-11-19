@@ -1,5 +1,7 @@
 # PROGRESS (source of truth; resume from here)
 
+Status key: **PASS** = clean first review. **FIXED** = reviewed once and fixed once, not re-checked. **DRAFT** = written, review pending. **NEEDS-HUMAN** = has a known open error (see notes). These statuses track the **review process only**; whether a lesson's command output is real or expected is a separate axis, shown by the `REAL OUTPUT (...)`/`EXPECTED OUTPUT (not captured)` labels in the lesson and inventoried in `VERIFY-LIST.md`. The right-hand "Open To verify items" column is a free-text note: a few rows record capture state (e.g. T1.10, T3.12, T4.04), but most repeat the review outcome or are blank — for the actual list of uncaptured items, use `VERIFY-LIST.md`, not this column. The dated "Decisions" lines are a historical run log, not current status.
+
 Decisions:
 - 2026-10-27: Inputs copied to guide/inputs/. `inputs/entry.sh <ID>` prints one topic entry.
 - Part 2 directory is `part2-basics`. Env scripts live in guide/env/ (unverified until step 5).
@@ -44,7 +46,7 @@ Decisions:
 | T3.21 | Understand API depreciations (API deprecations and migration) | 8 | wf | FAIL (0B/2M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.01 | Prepare underlying infrastructure for a Kubernetes cluster | 5 | wf | FAIL (0B/3M/13m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.02 | Create and manage Kubernetes clusters using kubeadm | 6 | wf | PASS (0B/0M/8m) | 0 | PASS |  |
-| T4.03 | Understand extension interfaces: CNI, CSI, CRI | 7 | wf | FAIL (0B/5M/14m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.03 | Understand extension interfaces: CNI, CSI, CRI | 7 | wf | FAIL (0B/5M/14m) | 1 | FIXED | 16 open items (VERIFY-LIST.md); real kind v0.33.0/v1.37.0 output captured 2026-11-16 |
 | T4.05 | Implement and configure a highly-available control plane | 8 | wf | FAIL (0B/2M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.17 | Understand connectivity between Pods | 8 | wf | PASS (0B/0M/8m) | 0 | PASS |  |
 | T3.02 | Choose and use the right workload resource | 9 | wf | PASS (0B/0M/8m) | 0 | PASS |  |
@@ -61,12 +63,12 @@ Decisions:
 | T3.23 | Use built-in CLI tools to monitor Kubernetes applications | 9 | wf | PASS (0B/0M/11m) | 0 | PASS |  |
 | T4.07 | Use Helm and Kustomize to install cluster components | 9 | wf | FAIL (0B/1M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.08 | Understand CRDs, install and configure operators | 10 | wf | FAIL (0B/1M/7m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.09 | Application deployments: rolling updates and rollbacks (admin view) | 10 | wf | FAIL (0B/2M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.09 | Application deployments: rolling updates and rollbacks (admin view) | 10 | wf | FAIL (0B/2M/9m) | 1 | FIXED | 9 open items (VERIFY-LIST.md); real kind v0.33.0/v1.37.0 output captured 2026-11-16 |
 | T4.10 | Use ConfigMaps and Secrets to configure applications (admin view, incl. encryption at rest) | 10 | wf | PASS (0B/0M/7m) | 0 | PASS |  |
 | T4.11 | Configure workload autoscaling | 10 | wf | FAIL (0B/2M/4m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.12 | Primitives for robust, self-healing application deployments | 10 | wf | FAIL (0B/4M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.14 | Configure volume types, access modes and reclaim policies | 11 | wf | FAIL (0B/2M/5m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.18 | Use ClusterIP, NodePort, LoadBalancer service types and endpoints | 10 | wf | PASS (0B/0M/5m) | 0 | PASS |  |
+| T4.14 | Configure volume types, access modes and reclaim policies | 11 | wf | FAIL (0B/2M/5m) | 1 | FIXED | 6 open items (VERIFY-LIST.md); real kind v0.33.0/v1.37.0 output captured 2026-11-16 |
+| T4.18 | Use ClusterIP, NodePort, LoadBalancer service types and endpoints | 10 | wf | PASS (0B/0M/5m) | 0 | PASS | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
 | T4.19 | Understand and use CoreDNS | 11 | wf | FAIL (0B/1M/8m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.20 | Define and enforce Network Policies | 11 | wf | PASS (0B/0M/9m) | 0 | PASS |  |
 | T4.21 | Know how to use Ingress controllers and Ingress resources | 11 | wf | PASS (0B/0M/7m) | 0 | PASS |  |
@@ -76,9 +78,13 @@ Decisions:
 | T4.06 | Manage role based access control (RBAC) | 12 | wf | PASS | 0 | PASS |  |
 | T4.23 | Manage and evaluate container output streams | 13 | wf | FAIL | 1 | FIXED | reviewed once, fixed once, not re-checked |
 | T4.27 | Troubleshoot services and networking | 12 | wf | FAIL | 1 | FIXED | reviewed once, fixed once, not re-checked |
-| T4.13 | Configure Pod admission and scheduling (limits, node affinity, etc.) | 12 | wf | - | 0 | DRAFT | written, review pending |
-| T4.22 | Use the Gateway API to manage Ingress traffic | 12 | wf | - | 0 | DRAFT | written, review pending |
-| T4.25 | Troubleshoot cluster components | 14 | wf | - | 0 | DRAFT | written, review pending |
+| T4.13 | Configure Pod admission and scheduling (limits, node affinity, etc.) | 12 | wf | FAIL (3B/0M/9m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
+| T4.22 | Use the Gateway API to manage Ingress traffic | 12 | wf | PASS (0B/0M/6m) | 0 | PASS |  |
+| T4.25 | Troubleshoot cluster components | 14 | wf | PASS (0B/0M/6m) | 0 | PASS |  |
+| T3.24 | Debugging in Kubernetes | 13 | wf | FAIL (0B/2M/8m) | 1 | FIXED | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
+| T4.15 | Manage persistent volumes and persistent volume claims | 12 | wf | FAIL (0B/4M/5m) | 1 | FIXED | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
+| T4.16 | Implement storage classes and dynamic volume provisioning | 13 | wf | FAIL (0B/1M/6m) | 1 | FIXED | Real kind v0.33.0/v1.37.0 output captured (2026-11-16); open: remaining items (section 11) |
+| T4.26 | Troubleshoot clusters and nodes | 15 | wf | FAIL (0B/3M/4m) | 1 | FIXED | reviewed once, fixed once, not re-checked |
 
 Decisions (cont.):
 - 2026-10-27: Re-reviews write to reviews/<ID>-review-r<N>.md so fix changelogs are not overwritten.
@@ -90,3 +96,5 @@ Decisions (cont.):
 - 2026-10-28: Group B done: 4 PASS, 13 FIXED; 6 topics (T2.03, T2.06, T3.18-T3.21) had writer failures from a network loss while the computer slept; re-run together with group C. Started caffeinate to prevent sleep.
 - 2026-10-28: Group C + retries (30 topics) done: 13 PASS, 17 FIXED, 0 failures. The 6 network-failed B topics are now written.
 - 2026-10-28: Local group D stopped to hand the remainder to a cloud run (see CLOUD-RUN.md). State: T3.22, T4.06 PASS; T3.17, T4.23, T4.27 FIXED; T4.13, T4.22, T4.25 DRAFT (no review yet); T3.24, T4.15, T4.16, T4.26 not written.
+- 2026-11-16: Kind verification pass — real output captured for T3.24, T4.03, T4.09, T4.14, T4.15, T4.16, T4.18 (kind v0.33.0, v1.37.0, Calico; T4.18 re-captured in one session for consistency). Remaining uncaptured items are inventoried in VERIFY-LIST.md; the big VM-only ones (T4.04 etcd/upgrade, T4.25/T4.26 node troubleshooting) still need three kubeadm VMs.
+- 2026-11-16: CKA extras added — `extras/cka-exam-intel.md`, `cka-study-plan.md`, `cka-task-bank.md`, `cka-mock-exams.md` — plus a review round fixing task-bank/mock graders against live clusters (see PRs #3-#9 on zainulhasan/cka).

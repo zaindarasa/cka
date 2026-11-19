@@ -27,8 +27,12 @@ case "${1:?add-on name}" in
     kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml ;;
   traefik)
     helm repo add traefik https://traefik.github.io/charts && helm repo update
+    # ports.web.port/websecure.port are the container entry-point ports: Gateway listeners on
+    # 80/443 need entryPoints that really serve them (chart default is 8000/8443 -> PortUnavailable).
+    # gateway.enabled=false stops the chart creating its own Gateway object; lessons make their own.
     helm upgrade --install traefik traefik/traefik -n traefik --create-namespace --version 42.1.3 \
-      --set providers.kubernetesGateway.enabled=true ;;
+      --set providers.kubernetesGateway.enabled=true \
+      --set ports.web.port=80 --set ports.websecure.port=443 --set gateway.enabled=false ;;
   metallb)
     helm repo add metallb https://metallb.github.io/metallb && helm repo update
     helm upgrade --install metallb metallb/metallb -n metallb-system --create-namespace --version 0.16.1 ;;
